@@ -1,0 +1,20 @@
+name = "mercator-connection"
+version = "0.1.0"
+defaultTargets = ["MercatorConnection", "generate-blog"]
+
+[[lean_lib]]
+name = "MercatorConnection"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.31.0"
+
+[[require]]
+name = "verso"
+git = "https://github.com/leanprover/verso.git"
+rev = "v4.31.0"
+
+[[lean_exe]]
+name = "generate-mercatorConnection"
+root = "MercatorConnection.main"
