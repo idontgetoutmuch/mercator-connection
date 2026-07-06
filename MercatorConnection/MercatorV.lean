@@ -56,12 +56,12 @@ noncomputable section
 
 /-! ## The exterior derivative of a scalar function
 
-`extDerivFun f x` is the genuine manifold (Fréchet) derivative of `f : S² → ℝ`
+`mvfderiv f x` is the genuine manifold (Fréchet) derivative of `f : S² → ℝ`
 at `x`, viewed as a linear functional on the tangent space. Additivity is
-upstream (`extDerivFun_add`); the product rule is not in Mathlib in this form. -/
+upstream (`mvfderiv_add`); the product rule is not in Mathlib in this form. -/
 
-/-- Product rule at the level of `extDerivFun`. -/
-lemma extDerivFun_mul {g f : S2 → ℝ} {x : S2}
+/-- Product rule at the level of `mvfderiv`. -/
+lemma mvfderiv_mul {g f : S2 → ℝ} {x : S2}
     (hg : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) g x)
     (hf : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) f x) :
     mvfderiv (𝓡 2) (g * f) x = g x • mvfderiv (𝓡 2) f x + f x • mvfderiv (𝓡 2) g x := by
@@ -128,7 +128,7 @@ We check the two axioms:
   1. add:     ∇(σ + σ') = ∇σ + ∇σ'
   2. leibniz: ∇(f · σ) = f · ∇σ + df ⊗ σ
 
-Both reduce to standard properties of `mfderiv`/`extDerivFun` plus linearity of
+Both reduce to standard properties of `mfderiv`/`mvfderiv` plus linearity of
 the correction, using `frame_dual` and the component-differentiability bridge. -/
 
 theorem mercatorCov_isCovariantDerivativeOn :
@@ -144,8 +144,8 @@ theorem mercatorCov_isCovariantDerivativeOn :
       funext y; simp only [Pi.add_apply, map_add]
     rw [mercatorCov_apply (σ + σ') hx, mercatorCov_apply σ hx, mercatorCov_apply σ' hx,
       hcθ, hcφ,
-      extDerivFun_add (mdiffAt_dθcomp hσ hxo) (mdiffAt_dθcomp hσ' hxo),
-      extDerivFun_add (mdiffAt_dφcomp hσ hx) (mdiffAt_dφcomp hσ' hx)]
+      mvfderiv_add (mdiffAt_dθcomp hσ hxo) (mdiffAt_dθcomp hσ' hxo),
+      mvfderiv_add (mdiffAt_dφcomp hσ hx) (mdiffAt_dφcomp hσ' hx)]
     simp only [Pi.add_apply, map_add]
     ext v
     simp only [ContinuousLinearMap.add_apply, ContinuousLinearMap.smulRight_apply,
@@ -159,8 +159,8 @@ theorem mercatorCov_isCovariantDerivativeOn :
     have hcφ : (fun y ↦ dφ y ((g • σ) y)) = g * fun y ↦ dφ y (σ y) := by
       funext y; simp only [Pi.smul_apply', Pi.mul_apply, map_smul, smul_eq_mul]
     rw [mercatorCov_apply (g • σ) hx, mercatorCov_apply σ hx, hcθ, hcφ,
-      extDerivFun_mul hg (mdiffAt_dθcomp hσ hxo),
-      extDerivFun_mul hg (mdiffAt_dφcomp hσ hx)]
+      mvfderiv_mul hg (mdiffAt_dθcomp hσ hxo),
+      mvfderiv_mul hg (mdiffAt_dφcomp hσ hx)]
     simp only [Pi.smul_apply', map_smul, smul_eq_mul]
     set a := dθ x (σ x) with ha
     set b := dφ x (σ x) with hb

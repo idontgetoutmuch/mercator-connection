@@ -8,5 +8,8 @@ def blog : Site := site MercatorConnection.FrontPage /
   "blog" MercatorConnection.Posts with
     MercatorConnection.Posts.FirstPost
     MercatorConnection.Posts.VersionStableLemmas
+    MercatorConnection.Posts.MercatorVPost
+    MercatorConnection.Posts.Mercatorintropost
+    MercatorConnection.Posts.Mwepost
 
 def main := blogMain .default blog
