@@ -127,10 +127,13 @@ noncomputable section Sphere
 
 /-! ### The sphere and its open subset -/
 abbrev S2 := sphere (0 : EuclideanSpace ℝ (Fin 3)) 1
+
 def northPole : S2 := ⟨(WithLp.equiv 2 (Fin 3 → ℝ)).symm ![0, 0, 1], by
   simp only [WithLp.equiv_symm_apply, mem_sphere_iff_norm, sub_zero, EuclideanSpace.norm_eq, norm_eq_abs, sq_abs, Fin.sum_univ_three, Fin.isValue, Matrix.cons_val_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, Matrix.cons_val_one, add_zero, Matrix.cons_val, one_pow, zero_add, sqrt_one]⟩
+
 def southPole : S2 := ⟨(WithLp.equiv 2 (Fin 3 → ℝ)).symm ![0, 0, -1], by
   simp only [WithLp.equiv_symm_apply, mem_sphere_iff_norm, sub_zero, EuclideanSpace.norm_eq, norm_eq_abs, sq_abs, Fin.sum_univ_three, Fin.isValue, Matrix.cons_val_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, Matrix.cons_val_one, add_zero, Matrix.cons_val, even_two, Even.neg_pow, one_pow, zero_add, sqrt_one]⟩
+
 -- S² minus the poles.
 def S2_open : Set S2 := {p | p ≠ northPole ∧ p ≠ southPole}
 
@@ -476,6 +479,7 @@ frame. -/
 /-- The coordinate coframe `dθ = d(θ_coord)`. -/
 noncomputable def dθ (x : S2) : TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
   mfderiv (𝓡 2) 𝓘(ℝ, ℝ) θ_coord x
+
 /-- The coordinate coframe `dφ = d(φ_coord)`. -/
 noncomputable def dφ (x : S2) : TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
   mfderiv (𝓡 2) 𝓘(ℝ, ℝ) φ_coord x
@@ -485,6 +489,7 @@ under `sphInv`. -/
 noncomputable def Xθ (x : S2) : TangentSpace (𝓡 2) x :=
   mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
     (EuclideanSpace.single (0 : Fin 2) (1 : ℝ))
+
 /-- The coordinate vector field `∂φ`, the push-forward of the second standard basis vector
 under `sphInv`. -/
 noncomputable def Xφ (x : S2) : TangentSpace (𝓡 2) x :=
