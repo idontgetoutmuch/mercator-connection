@@ -122,7 +122,7 @@ Now we can define two vectors to be parallel if their angles to a
 given meridian are the same. For this to be true we must have a
 connection $\nabla$ with $\nabla e_1 = \nabla e_2 = 0$.
 
-** Connections from coefficients in a frame
+** Connections from Coefficients in a Frame
 
 In SageManifolds we can just say =nabla.add_coef(e)= to specify a
 covariant derivative by its connection coefficients =Γ= relative to a
@@ -214,7 +214,67 @@ def mercatorCov :
   covDerivOfFrame sphSource ![e₁, e₂] ![ε₁, ε₂] 0
 #+end_src
 
-where interestingly =0 : Fin 2 → Fin 2 → Fin 2 → S2 → ℝ=
+where interestingly =0 : Fin 2 → Fin 2 → Fin 2 → S2 → ℝ=.
+
+** Bearings are Parallel
+
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+local infixr:70 " ⊗ " => fun c w => ContinuousLinearMap.smulRight c w
+
+lemma mercatorCov_apply (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
+    (hx : x ∈ sphSource) :
+    mercatorCov σ x =
+      (mvfderiv (𝓡 2) (fun y ↦ ε₁ y (σ y)) x) ⊗ (e₁ x) +
+      (mvfderiv (𝓡 2) (fun y ↦ ε₂ y (σ y)) x) ⊗ (e₂ x) := by
+  simp only [mercatorCov, covDerivOfFrame, if_pos hx, Fin.sum_univ_two,
+    Matrix.cons_val_zero, Matrix.cons_val_one,
+    Pi.zero_apply, zero_mul, zero_smul, Finset.sum_const_zero, add_zero]
+#+end_src
+
+We wanted \(\nabla e_1 = 0\) and \(\nabla e_2 = 0\) but we defined the
+connexion via connexion coefficients so we had better check that we
+get what we want:
+
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+lemma ε₁_e₁ {y : S2} (hy : y ∈ sphSource) : ε₁ y (e₁ y) = 1 :=
+  dθ_Xθ hy
+
+lemma ε₂_e₁ {y : S2} (hy : y ∈ sphSource) : ε₂ y (e₁ y) = 0 := by
+  simp only [ε₂, e₁, smul_apply, smul_eq_mul, dφ_Xθ hy, mul_zero]
+
+lemma ε₁_e₂ {y : S2} (hy : y ∈ sphSource) : ε₁ y (e₂ y) = 0 := by
+  simp only [ε₁, e₂, map_smul, smul_eq_mul, dθ_Xφ hy, mul_zero]
+
+lemma ε₂_e₂ {y : S2} (hy : y ∈ sphSource) : ε₂ y (e₂ y) = 1 := by
+  have hs : Real.sin (θ_coord y) ≠ 0 :=
+    sinθ_ne_zero y (sphSource_subset_S2_open hy)
+  simp only [ε₂, e₂, smul_apply, map_smul, smul_eq_mul, dφ_Xφ hy, mul_one]
+  field_simp
+#+end_src
+
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+lemma mercatorCov_e₁ {x : S2} (hx : x ∈ sphSource) : mercatorCov e₁ x = 0 := by
+  rw [mercatorCov_apply _ hx]
+  have hmem := IsOpen.mem_nhds sph_open_source hx
+  rw [mvfderiv_of_eventuallyEq_const
+        (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₁_e₁ hy),
+      mvfderiv_of_eventuallyEq_const
+        (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₂_e₁ hy)]
+  ext v; simp
+#+end_src
+
+and
+
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+lemma mercatorCov_e₂ {x : S2} (hx : x ∈ sphSource) : mercatorCov e₂ x = 0 := by
+  rw [mercatorCov_apply _ hx]
+  have hmem := IsOpen.mem_nhds sph_open_source hx
+  rw [mvfderiv_of_eventuallyEq_const
+        (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₁_e₂ hy),
+      mvfderiv_of_eventuallyEq_const
+        (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₂_e₂ hy)]
+  ext v; simp
+#+end_src
 
     The second file in the Mercator connection development defines
     =mercatorCov= itself — the connection map sending a section σ of TS² to
