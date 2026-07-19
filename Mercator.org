@@ -125,6 +125,25 @@ def ε₂ : Π x : S2, TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
   fun x ↦ Real.sin (θ_coord x) • dφ x
 #+end_src
 
+*** The component-differentiability bridge (unchanged)
+
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+lemma mdiffAt_dθcomp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
+    (hx : x ∈ S2_open) :
+    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dθ y (σ y)) x :=
+  mdifferentiableAt_mfderiv_apply θ_coord σ x ((θ_coord_contMDiffAt hx).of_le (by norm_num)) hσ
+
+lemma mdiffAt_dφcomp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
+    (hx : x ∈ sphSource) :
+    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dφ y (σ y)) x :=
+  mdifferentiableAt_mfderiv_apply φ_coord σ x
+    ((φ_coord_contMDiffAt hx).of_le (by decide)) hσ
+#+end_src
+
 Now we can define two vectors to be parallel if their angles to a
 given meridian are the same. For this to be true we must have a
 connection $\nabla$ with $\nabla e_1 = \nabla e_2 = 0$.
@@ -409,8 +428,8 @@ v = \varepsilon^1_x(v)\, e_1(x) + \varepsilon^2_x(v)\, e_2(x)
 \]
 
 \[
-v = d\theta(v)\,\partial_\theta
-  + \bigl(\sin\theta\, d\varphi(v)\bigr)\,\frac{1}{\sin\theta}\,\partial_\varphi
+v =
+d\theta(v)\,\partial_\theta + \big(\sin\theta\, d\varphi(v)\big)\,\frac{1}{\sin\theta}\,\partial_\varphi
 \]
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
@@ -424,188 +443,75 @@ lemma compass_dual {x : S2} (hx : x ∈ sphSource) (v : TangentSpace (𝓡 2) x)
   exact h.symm
 #+end_src
 
-
-
-    The second file in the Mercator connection development defines
-    =mercatorCov= itself — the connection map sending a section σ of TS² to
-    a section of Hom(TS², TS²). At a point x with colatitude θ, the sole
-    nonzero Christoffel symbol is \(\Gamma^\phi_{\theta\phi} = \cot\theta\),
-    contributing a correction term =cot θ · dφ(σ) · dθ= to the φ-component
-    of the covariant derivative. All other Christoffel symbols are zero.
-    This makes the rhumb lines — lines of constant bearing on a nautical
-    chart — the geodesics of the connection, and gives it nonzero torsion
-    \(T(e_1, e_2) = \cot\theta \cdot e_2\).
-
-    The connection is built from the genuine differential-geometric coframe
-    and frame of the spherical chart, defined in a companion file
-    =MercatorGeom=. The covectors =dθ x = mvfderiv (𝓡 2) θ_coord x= and
-    =dφ x = mvfderiv (𝓡 2) φ_coord x= are smooth sections of the cotangent
-    bundle — the honest differentials of =θ_coord = arccos z= and
-    =φ_coord = arg=. The vectors =Xθ=, =Xφ= are the push-forwards of the
-    standard basis under the chart inverse =sphInv=, forming the dual frame.
-    Because these are honest smooth objects rather than constant model-space
-    vectors, =mercatorCov= satisfies Mathlib's upstream
-    =IsCovariantDerivativeOn= interface, whose =add= and =leibniz= axioms
-    are stated for sections differentiable as bundled sections of the
-    tangent bundle.
-
-    \[
-    \nabla_X \partial_\phi = \cot\theta\, X(\theta)\, \partial_\phi
-    \]
-
-    The key technical bridge is =mdifferentiableAt_mfderiv_apply= (from
-    =MercatorGeom=): bundled differentiability of σ implies
-    differentiability of the scalar functions =y ↦ dθ y (σ y)= and
-    =y ↦ dφ y (σ y)=, so that =mvfderiv= can be applied to them inside the
-    axiom proofs. The product rule for =mvfderiv= is not in Mathlib in this
-    pointwise form, so it is proved locally. First the module header and a
-    variable context:
-
-  The product rule follows immediately from =hasMFDerivAt.mul=:
-
-  ,#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-  lemma mvfderiv_mul_S2 {S2 : Type*} [TopologicalSpace S2]
-      [ChartedSpace (EuclideanSpace ℝ (Fin 2)) S2]
-      [IsManifold (𝓡 2) ⊤ S2]
-      {g f : S2 → ℝ} {x : S2}
-      (hg : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) g x)
-      (hf : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) f x) :
-      mvfderiv (𝓡 2) (g * f) x =
-	g x • mvfderiv (𝓡 2) f x + f x • mvfderiv (𝓡 2) g x :=
-    (hg.hasMFDerivAt.mul hf.hasMFDerivAt).mfderiv
-
-  end
-#+end_src
-
-The =add= axiom of =IsCovariantDerivativeOn= reduces to linearity of
-=mvfderiv= (=mvfderiv_add=), linearity of the frame covectors =dθ=,
-=dφ=, and a =module= call to close the linear algebra. The =leibniz=
-axiom uses the product rule, then the frame-dual identity
-=σ x = dθ(σ x) · Xθ x + dφ(σ x) · Xφ x= to expand σ in the correction
-term, after which =module= closes it again. The proofs are short
-because the design is right: honest smooth objects, honest bundled
-differentiability, and a named bridge lemma.
-
-This file also absorbed a migration from Lean 4.30 to 4.31. The
-function =extDerivFun= — the manifold exterior derivative of a scalar
-function — was renamed =mvfderiv= throughout Mathlib. The signatures
-are identical: both take an explicit model-with-corners argument =I=,
-the function =g : M → F=, and the point =x : M=, returning an element
-of =TangentSpace I x →L[𝕜] F=. The corresponding lemma
-=extDerivFun_add= became =mvfderiv_add=. A pure rename, but a reminder
-that even a stable API surface shifts between toolchain bumps, and that
-keeping version-sensitive infrastructure quarantined from the
-geometrically essential definitions is worth the discipline.
+Differentiability of the ε₁-component of a bundle-differentiable section.
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-noncomputable section
-
-/-! ## The component-differentiability bridge
-
-From differentiability of the bundled tangent section `T% σ` we obtain
-differentiability of the chart components `y ↦ dθ y (σ y)` and `y ↦ dφ y (σ y)`,
-using that `dθ`, `dφ` are the differentials of the smooth functions `θ_coord`,
-`φ_coord` together with `mdifferentiableAt_mfderiv_apply`. -/
-
-/-- The θ-component of a bundle-differentiable section is differentiable. -/
-lemma mdiffAt_dθcomp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
-    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
-      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
-    (hx : x ∈ S2_open) :
-    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dθ y (σ y)) x :=
-  mdifferentiableAt_mfderiv_apply θ_coord σ x ((θ_coord_contMDiffAt hx).of_le (by norm_num)) hσ
-
-/-- The φ-component of a bundle-differentiable section is differentiable. -/
-lemma mdiffAt_dφcomp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
+lemma mdiffAt_ε₁comp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
     (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
       (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
     (hx : x ∈ sphSource) :
-    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dφ y (σ y)) x :=
-  mdifferentiableAt_mfderiv_apply φ_coord σ x
-    ((φ_coord_contMDiffAt hx).of_le (by decide)) hσ
+    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ ε₁ y (σ y)) x :=
+  mdiffAt_dθcomp hσ (sphSource_subset_S2_open hx)
+#+end_src
 
-/-! ## The Mercator connection
+Differentiability of the ε₂-component of a bundle-differentiable section.
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+lemma mdiffAt_ε₂comp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
+    (hx : x ∈ sphSource) :
+    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ ε₂ y (σ y)) x := by
+  have hxo := sphSource_subset_S2_open hx
+  have hcm : ContMDiffAt (𝓡 2) 𝓘(ℝ, ℝ) ⊤ (fun y ↦ Real.sin (θ_coord y)) x :=
+    (Real.contDiff_sin.contMDiff.contMDiffAt).comp x (θ_coord_contMDiffAt hxo)
+  have hsin : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ Real.sin (θ_coord y)) x :=
+    hcm.mdifferentiableAt (by norm_num)
+  have h := hsin.mul (mdiffAt_dφcomp hσ hx)
+  exact h.congr_of_eventuallyEq (Filter.Eventually.of_forall fun y ↦ by
+    simp only [ε₂, smul_apply, smul_eq_mul, Pi.mul_apply])
+#+end_src
 
-The connection map sends a section σ of TS² to a section of Hom(TS², TS²).
-At a point x ∈ sphSource with coordinate θ = θ_coord x:
+* Verification: the upstream `IsCovariantDerivativeOn`
 
-  (∇σ)(x)(v) = dθ(v) · ∂θ-derivative + ... + cotθ · σ^φ(x) · v^θ · ∂_φ
+With all coefficients zero, both axioms are pure `mvfderiv` calculus plus
+compass duality — there is no correction term to juggle. -/
 
-This is the unique connection with Γ^φ_{θφ} = cotθ and all other Γ = 0. -/
-
-open Classical in
-noncomputable def mercatorCov :
-    (Π x : S2, TangentSpace (𝓡 2) x) →
-    (Π x : S2, TangentSpace (𝓡 2) x →L[ℝ] TangentSpace (𝓡 2) x) :=
-  fun σ x =>
-    if _hx : x ∈ sphSource then
-      let θ    := θ_coord x
-      let cotθ := Real.cos θ / Real.sin θ
-      let Dσθ : TangentSpace (𝓡 2) x →L[ℝ] ℝ := mvfderiv (𝓡 2) (fun y ↦ dθ y (σ y)) x
-      let Dσφ : TangentSpace (𝓡 2) x →L[ℝ] ℝ := mvfderiv (𝓡 2) (fun y ↦ dφ y (σ y)) x
-      let Γ : TangentSpace (𝓡 2) x →L[ℝ] ℝ := (cotθ * dφ x (σ x)) • dθ x
-      (Dσθ.smulRight (Xθ x)) + ((Dσφ + Γ).smulRight (Xφ x))
-    else 0
-
-lemma mercatorCov_apply (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2} (hx : x ∈ sphSource) :
-    mercatorCov σ x =
-      (mvfderiv (𝓡 2) (fun y ↦ dθ y (σ y)) x).smulRight (Xθ x) +
-      (mvfderiv (𝓡 2) (fun y ↦ dφ y (σ y)) x +
-        ((Real.cos (θ_coord x) / Real.sin (θ_coord x)) * dφ x (σ x)) • dθ x).smulRight
-        (Xφ x) := by
-  simp only [mercatorCov, dif_pos hx]
-
-/-! ## Verification: the upstream `IsCovariantDerivativeOn`
-
-We check the two axioms:
-  1. add:     ∇(σ + σ') = ∇σ + ∇σ'
-  2. leibniz: ∇(f · σ) = f · ∇σ + df ⊗ σ
-
-Both reduce to standard properties of `mfderiv`/`mvfderiv` plus linearity of
-the correction, using `frame_dual` and the component-differentiability bridge. -/
-
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
 theorem mercatorCov_isCovariantDerivativeOn :
     IsCovariantDerivativeOn (EuclideanSpace ℝ (Fin 2)) mercatorCov sphSource where
   add := by
     intro σ σ' x hσ hσ' hx
-    have hxo := sphSource_subset_S2_open hx
-    have hcθ : (fun y ↦ dθ y ((σ + σ') y)) =
-        (fun y ↦ dθ y (σ y)) + fun y ↦ dθ y (σ' y) := by
+    have hc1 : (fun y ↦ ε₁ y ((σ + σ') y)) =
+        (fun y ↦ ε₁ y (σ y)) + fun y ↦ ε₁ y (σ' y) := by
       funext y; simp only [Pi.add_apply, map_add]
-    have hcφ : (fun y ↦ dφ y ((σ + σ') y)) =
-        (fun y ↦ dφ y (σ y)) + fun y ↦ dφ y (σ' y) := by
+    have hc2 : (fun y ↦ ε₂ y ((σ + σ') y)) =
+        (fun y ↦ ε₂ y (σ y)) + fun y ↦ ε₂ y (σ' y) := by
       funext y; simp only [Pi.add_apply, map_add]
     rw [mercatorCov_apply (σ + σ') hx, mercatorCov_apply σ hx, mercatorCov_apply σ' hx,
-      hcθ, hcφ,
-      mvfderiv_add (mdiffAt_dθcomp hσ hxo) (mdiffAt_dθcomp hσ' hxo),
-      mvfderiv_add (mdiffAt_dφcomp hσ hx) (mdiffAt_dφcomp hσ' hx)]
-    simp only [Pi.add_apply, map_add]
+      hc1, hc2,
+      mvfderiv_add (mdiffAt_ε₁comp hσ hx) (mdiffAt_ε₁comp hσ' hx),
+      mvfderiv_add (mdiffAt_ε₂comp hσ hx) (mdiffAt_ε₂comp hσ' hx)]
     ext v
-    simp only [ContinuousLinearMap.add_apply, ContinuousLinearMap.smulRight_apply,
-      ContinuousLinearMap.smul_apply, smul_eq_mul]
+    simp only [add_apply, ContinuousLinearMap.smulRight_apply]
     module
   leibniz := by
     intro σ g x hσ hg hx
-    have hxo := sphSource_subset_S2_open hx
-    have hcθ : (fun y ↦ dθ y ((g • σ) y)) = g * fun y ↦ dθ y (σ y) := by
+    have hc1 : (fun y ↦ ε₁ y ((g • σ) y)) = g * fun y ↦ ε₁ y (σ y) := by
       funext y; simp only [Pi.smul_apply', Pi.mul_apply, map_smul, smul_eq_mul]
-    have hcφ : (fun y ↦ dφ y ((g • σ) y)) = g * fun y ↦ dφ y (σ y) := by
+    have hc2 : (fun y ↦ ε₂ y ((g • σ) y)) = g * fun y ↦ ε₂ y (σ y) := by
       funext y; simp only [Pi.smul_apply', Pi.mul_apply, map_smul, smul_eq_mul]
-    rw [mercatorCov_apply (g • σ) hx, mercatorCov_apply σ hx, hcθ, hcφ,
-      mvfderiv_mul hg (mdiffAt_dθcomp hσ hxo),
-      mvfderiv_mul hg (mdiffAt_dφcomp hσ hx)]
-    simp only [Pi.smul_apply', map_smul, smul_eq_mul]
-    set a := dθ x (σ x) with ha
-    set b := dφ x (σ x) with hb
-    have hdual : σ x = a • Xθ x + b • Xφ x := by
-      rw [ha, hb]; exact (frame_dual hx (σ x)).symm
+    rw [mercatorCov_apply (g • σ) hx, mercatorCov_apply σ hx, hc1, hc2,
+      mvfderiv_mul hg (mdiffAt_ε₁comp hσ hx),
+      mvfderiv_mul hg (mdiffAt_ε₂comp hσ hx)]
+    set a := ε₁ x (σ x) with ha
+    set b := ε₂ x (σ x) with hb
+    have hdual : σ x = a • e₁ x + b • e₂ x := by
+      rw [ha, hb]; exact compass_dual hx (σ x)
     rw [hdual]
     ext v
-    simp only [ContinuousLinearMap.add_apply, ContinuousLinearMap.smul_apply,
+    simp only [add_apply, smul_apply,
       ContinuousLinearMap.smulRight_apply, smul_eq_mul]
     module
-
-end
 #+end_src
 
 * References
