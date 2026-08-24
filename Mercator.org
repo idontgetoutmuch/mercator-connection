@@ -9,6 +9,20 @@
 #+LATEX_HEADER: \setlength{\parindent}{0pt}
 # -*- indent-tabs-mode: nil; org-src-preserve-indentation: t; -*-
 
+* Foreword
+
+Some time ago I wanted to write about the Ehresmann connection, and it
+seemed to me that SageManifolds lacked the necessary
+scaffolding. Given that my Python skills are rudimentary, I looked for
+something where I could write the scaffolding myself if need be, and
+alighted on Mathlib. A question about whether I could recreate my
+earlier blog post on connections with torsion in Mathlib got an
+encouraging response — and thus began my Lean journey. That response
+now looks extremely optimistic: even today some of the scaffolding
+does not exist. Be that as it may, I have recast what I wrote in
+SageManifolds using Lean and Mathlib. I got some way, but the section
+on geodesics still depends on a PR that contains =sorry= s.
+
 ** Introduction
 
 In most presentations of Riemannian geometry, e.g. [cite/t:@o1983semi] and [[https://en.wikipedia.org/wiki/Fundamental_theorem_of_Riemannian_geometry][Wikipedia]],
@@ -23,7 +37,7 @@ It turns out we are all very familiar with a connection with torsion:
 the Mercator projection. Some mathematical physics texts,
 e.g. [cite/t:@Nakahara2003], allude to this but leave the details to the
 reader. Moreover, this connection respects the metric induced from
-Euclidean space.
+Euclidean space (in fact we will construct it so it does this).
 
 The connection we construct cannot exist on the entire sphere as we
 are going to need to define a orthogonal frame and by the [[https://en.wikipedia.org/wiki/Hairy_ball_theorem][hairy ball
@@ -160,7 +174,7 @@ Let \(\nabla\) be any Koszul connection thus Leibniz in the second argument:
 \[\nabla_v(f\sigma) = (df|_x(v))\,\sigma(x) + f(x)\,\nabla_v\sigma\]
 
 Let \(e_i\) be a frame with corresponing coframe \(\varepsilon^i\) on some open set \(S\), and
-define the connexion coefficients by
+define the connection coefficients by
 
 \[
 \nabla_{e_j} e_k = \Gamma^i_{jk}\, e_i
@@ -201,7 +215,7 @@ Substituting back and relabelling:
 
 Conversely, any smooth choice of \(\Gamma^i_{jk}\) makes this formula a
 Koszul connection: additivity is immediate and the Leibniz rule is a
-one-line check; so on \(S\), connexions correspond exactly to the connexion
+one-line check; so on \(S\), connections correspond exactly to the connection
 coefficients relative to the frame.
 
 We can write this definition for the specific case of \(S^2\) in Lean as:
@@ -258,7 +272,7 @@ lemma mercatorCov_apply (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
 #+end_src
 
 We wanted \(\nabla e_1 = 0\) and \(\nabla e_2 = 0\) but we defined the
-connexion via connexion coefficients so we had better check that we
+connection via connection coefficients so we had better check that we
 get what we want:
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
@@ -513,6 +527,109 @@ theorem mercatorCov_isCovariantDerivativeOn :
       ContinuousLinearMap.smulRight_apply, smul_eq_mul]
     module
 #+end_src
+
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+/-! ## The coordinate expression — the classical Christoffel symbol -/
+
+/-- d(sin θ) = cos θ · dθ. -/
+theorem mvfderiv_sin_θcoord {x : S2} (hx : x ∈ S2_open) :
+    mvfderiv (𝓡 2) (fun y ↦ Real.sin (θ_coord y)) x
+      = Real.cos (θ_coord x) • dθ x := by
+  have h_chain : HasMFDerivAt (𝓡 2) 𝓘(ℝ, ℝ) θ_coord x (dθ x) :=
+    ((θ_coord_contMDiffAt hx).mdifferentiableAt (by norm_num)).hasMFDerivAt
+  have hsin : HasFDerivAt Real.sin
+      (ContinuousLinearMap.toSpanSingleton ℝ (Real.cos (θ_coord x))) (θ_coord x) :=
+    (Real.hasDerivAt_sin (θ_coord x)).hasFDerivAt
+  have hcomp : HasMFDerivAt (𝓡 2) 𝓘(ℝ, ℝ) (Real.sin ∘ θ_coord) x
+      ((ContinuousLinearMap.toSpanSingleton ℝ (Real.cos (θ_coord x))).comp (dθ x)) :=
+    HasMFDerivAt.comp x hsin.hasMFDerivAt h_chain
+  have heq : (ContinuousLinearMap.toSpanSingleton ℝ (Real.cos (θ_coord x))).comp (dθ x)
+      = Real.cos (θ_coord x) • dθ x := by
+    ext v
+    simp [ContinuousLinearMap.toSpanSingleton_apply, smul_eq_mul]
+    exact mul_comm' ((dθ x) v) (cos (θ_coord x))
+  exact heq ▸ hcomp.mfderiv
+
+/-- cot of the colatitude, the sole nonzero Christoffel coefficient. -/
+noncomputable def cotθ (x : S2) : ℝ := Real.cos (θ_coord x) / Real.sin (θ_coord x)
+
+/-- Coordinate-frame Christoffel array of the Mercator connection:
+Γ^φ_{θφ} = cot θ, all others zero. -/
+def Γmercator : Fin 2 → Fin 2 → Fin 2 → S2 → ℝ :=
+  fun i j k x => if i = 1 ∧ j = 0 ∧ k = 1 then cotθ x else 0
+
+/-- σ is differentiable at x as a section of the tangent bundle. -/
+def MDiffSectionAt (σ : Π y : S2, TangentSpace (𝓡 2) y) (x : S2) : Prop :=
+  MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+    (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x
+
+#check  mvfderiv_mul
+
+/-
+Γ^φ_{θφ} = cot θ: the compass-frame connection, written in the coordinate
+frame, is the classical Mercator connection.
+-/
+theorem mercatorCov_coord_pre (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
+    (hx : x ∈ sphSource)
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x) :
+    mercatorCov σ x =
+      (mvfderiv (𝓡 2) (fun y ↦ dθ y (σ y)) x) ⊗ (Xθ x) +
+      (mvfderiv (𝓡 2) (fun y ↦ dφ y (σ y)) x +
+        ((Real.cos (θ_coord x) / Real.sin (θ_coord x)) * dφ x (σ x)) • dθ x).smulRight
+        (Xφ x) := by
+  have hxo := sphSource_subset_S2_open hx
+  have hs : Real.sin (θ_coord x) ≠ 0 := sinθ_ne_zero x hxo
+  have hcm : ContMDiffAt (𝓡 2) 𝓘(ℝ, ℝ) ⊤ (fun y ↦ Real.sin (θ_coord y)) x :=
+    (Real.contDiff_sin.contMDiff.contMDiffAt).comp x (θ_coord_contMDiffAt hxo)
+  have hsin_diff : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ Real.sin (θ_coord y)) x :=
+    hcm.mdifferentiableAt (by norm_num)
+  have hφ : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dφ y (σ y)) x :=
+    mdiffAt_dφcomp hσ hx
+  have hprod : (fun y ↦ ε₂ y (σ y)) =
+      (fun y ↦ Real.sin (θ_coord y)) * fun y ↦ dφ y (σ y) := by
+    funext y
+    simp only [ε₂, smul_apply, smul_eq_mul, Pi.mul_apply]
+  rw [mercatorCov_apply σ hx, hprod, mvfderiv_mul hsin_diff hφ,
+    mvfderiv_sin_θcoord hxo]
+  ext v
+  simp only [e₁, e₂, ε₁, add_apply, ContinuousLinearMap.smulRight_apply, smul_apply, smul_eq_mul, smul_smul]
+  congr 1
+  congr 1
+  field_simp
+#+end_src
+
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+theorem mercatorCov_coord (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
+    (hx : x ∈ sphSource) (hσ : MDiffSectionAt σ x) :
+    mercatorCov σ x
+      = covDerivOfFrame sphSource ![Xθ, Xφ] ![dθ, dφ] Γmercator σ x := by
+  rw [mercatorCov_coord_pre σ hx hσ]
+  simp only [covDerivOfFrame, if_pos hx, Fin.sum_univ_two,
+    Matrix.cons_val_zero, Matrix.cons_val_one, Γmercator, cotθ]
+  norm_num
+
+theorem mercatorCov_coord' (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
+    (hx : x ∈ sphSource) (hσ : MDiffSectionAt σ x) :
+    covDerivOfFrame sphSource ![e₁, e₂] ![ε₁, ε₂] 0 σ x
+      = covDerivOfFrame sphSource ![Xθ, Xφ] ![dθ, dφ] Γmercator σ x :=
+  mercatorCov_coord σ hx hσ
+#+end_src
+
+Why did the compass frame's zero coefficients turn into cot θ in the coordinate frame?
+Because connection coefficients are not the components of a tensor: under a change of frame \(e^\prime_i = A^j_i e_j​\) they transform inhomogeneously,
+
+\[
+\Gamma^\prime = A^{−1}\Gamma A + A^{−1}dA
+\]
+
+the second term being the tell-tale non-tensorial part. Here the change from the compass frame {e1,e2}\{e_1, e_2\}
+{e1​,e2​} to the coordinate frame {∂θ,∂φ}\{\partial_\theta, \partial_\varphi\}
+{∂θ​,∂φ​} has A=diag(1,sin⁡θ)A = \mathrm{diag}(1, \sin\theta)
+A=diag(1,sinθ), so with Γ=0\Gamma = 0
+Γ=0 on the compass side the entire coordinate expression comes from the inhomogeneous term: A−1dA=diag(0, cot⁡θ dθ)A^{-1}dA = \mathrm{diag}(0,\, \cot\theta\, d\theta)
+A−1dA=diag(0,cotθdθ), i.e. the single symbol Γθφφ=cot⁡θ\Gamma^\varphi_{\theta\varphi} = \cot\theta
+Γθφφ​=cotθ — exactly what mercatorCov_coord computes. I hope to make the transformation law itself, and its formalisation via the Yang–Mills transformation law on the frame bundle, the subject of a future post.
 
 * References
 #+print_bibliography:
