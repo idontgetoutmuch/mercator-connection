@@ -58,7 +58,7 @@ noncomputable def sphInvVec (q : EuclideanSpace ℝ (Fin 2)) : EuclideanSpace �
 	Real.cos (q 0)]
 #+end_src
 
-NB this is not the Mercator projection; we will soon define that.
+NB this is just a chart not the Mercator projection; we will soon define that.
 
 First suppose we have the round metric on the sphere:
 
@@ -97,15 +97,15 @@ so we should take that as one component of our frame \(e_1 =
 = (1 / \sin{\theta})\partial\phi\).
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean :exports none
-  import Mathlib
-  import MercatorConnection.MercatorGeom
+import Mathlib
+import MercatorConnection.MercatorGeom
 
-  open Real Set Metric Manifold Bundle
-  open scoped BigOperators Manifold ContDiff
+open Real Set Metric Manifold Bundle
+open scoped BigOperators Manifold ContDiff
 
-  noncomputable section
+noncomputable section
 
-  variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
 #+end_src
 
 In Lean we can write these (and while we are about it their orthonormal covectors) as:
@@ -118,16 +118,15 @@ noncomputable def Xθ (x : S2) : TangentSpace (𝓡 2) x :=
 noncomputable def Xφ (x : S2) : TangentSpace (𝓡 2) x :=
 mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
   (EuclideanSpace.single (1 : Fin 2) (1 : ℝ))
+
+noncomputable def dθ (x : S2) : TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
+  mfderiv (𝓡 2) 𝓘(ℝ, ℝ) θ_coord x
+
+noncomputable def dφ (x : S2) : TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
+  mfderiv (𝓡 2) 𝓘(ℝ, ℝ) φ_coord x
 #+end_src
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-lemma mvfderiv_of_eventuallyEq_const {f : S2 → ℝ} {c : ℝ} {x : S2}
-    (h : f =ᶠ[nhds x] fun _ ↦ c) :
-    mvfderiv (𝓡 2) f x = 0 := by
-  have h1 : mvfderiv (𝓡 2) f x = mvfderiv (𝓡 2) (fun _ : S2 ↦ c) x := h.mfderiv_eq
-  rw [h1]
-  exact mfderiv_const
-
 def e₁ : Π x : S2, TangentSpace (𝓡 2) x := Xθ
 
 def e₂ : Π x : S2, TangentSpace (𝓡 2) x :=
@@ -139,30 +138,11 @@ def ε₂ : Π x : S2, TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
   fun x ↦ Real.sin (θ_coord x) • dφ x
 #+end_src
 
-*** The component-differentiability bridge (unchanged)
-
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-lemma mdiffAt_dθcomp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
-    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
-      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
-    (hx : x ∈ S2_open) :
-    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dθ y (σ y)) x :=
-  mdifferentiableAt_mfderiv_apply θ_coord σ x ((θ_coord_contMDiffAt hx).of_le (by norm_num)) hσ
-
-lemma mdiffAt_dφcomp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
-    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
-      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
-    (hx : x ∈ sphSource) :
-    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dφ y (σ y)) x :=
-  mdifferentiableAt_mfderiv_apply φ_coord σ x
-    ((φ_coord_contMDiffAt hx).of_le (by decide)) hσ
-#+end_src
+** Connections from Coefficients in a Frame
 
 Now we can define two vectors to be parallel if their angles to a
 given meridian are the same. For this to be true we must have a
 connection $\nabla$ with $\nabla e_1 = \nabla e_2 = 0$.
-
-** Connections from Coefficients in a Frame
 
 In SageManifolds we can just say =nabla.add_coef(e)= to specify a
 covariant derivative by its connection coefficients =Γ= relative to a
@@ -256,7 +236,7 @@ def mercatorCov :
 
 where interestingly =0 : Fin 2 → Fin 2 → Fin 2 → S2 → ℝ=.
 
-** Bearings are Parallel
+** TODO Bearings are Parallel
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
 local infixr:70 " ⊗ " => fun c w => ContinuousLinearMap.smulRight c w
@@ -276,6 +256,13 @@ connection via connection coefficients so we had better check that we
 get what we want:
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+lemma mvfderiv_of_eventuallyEq_const {f : S2 → ℝ} {c : ℝ} {x : S2}
+    (h : f =ᶠ[nhds x] fun _ ↦ c) :
+    mvfderiv (𝓡 2) f x = 0 := by
+  have h1 : mvfderiv (𝓡 2) f x = mvfderiv (𝓡 2) (fun _ : S2 ↦ c) x := h.mfderiv_eq
+  rw [h1]
+  exact mfderiv_const
+
 lemma frame_pairing_pre {x : S2} (hx : x ∈ sphSource) :
     (mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x) ∘SL (mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)) =
      ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) := by
@@ -457,6 +444,23 @@ lemma compass_dual {x : S2} (hx : x ∈ sphSource) (v : TangentSpace (𝓡 2) x)
   exact h.symm
 #+end_src
 
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+lemma mdiffAt_dθcomp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
+    (hx : x ∈ S2_open) :
+    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dθ y (σ y)) x :=
+  mdifferentiableAt_mfderiv_apply θ_coord σ x ((θ_coord_contMDiffAt hx).of_le (by norm_num)) hσ
+
+lemma mdiffAt_dφcomp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
+    (hx : x ∈ sphSource) :
+    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dφ y (σ y)) x :=
+  mdifferentiableAt_mfderiv_apply φ_coord σ x
+    ((φ_coord_contMDiffAt hx).of_le (by decide)) hσ
+#+end_src
+
 Differentiability of the ε₁-component of a bundle-differentiable section.
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
@@ -488,7 +492,7 @@ lemma mdiffAt_ε₂comp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
 * Verification: the upstream `IsCovariantDerivativeOn`
 
 With all coefficients zero, both axioms are pure `mvfderiv` calculus plus
-compass duality — there is no correction term to juggle. -/
+compass duality — there is no correction term to juggle.
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
 theorem mercatorCov_isCovariantDerivativeOn :
