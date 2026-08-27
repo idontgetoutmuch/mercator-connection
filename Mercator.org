@@ -147,7 +147,11 @@ connection $\nabla$ with $\nabla e_1 = \nabla e_2 = 0$.
 In SageManifolds we can just say =nabla.add_coef(e)= to specify a
 covariant derivative by its connection coefficients =Γ= relative to a
 frame =e= with dual coframe =ε=, supported on a set =s=. Well the
-coframe and the valid set do not need to specified (why?).
+coframe and the valid set do not need to specified: in SageManifolds, =e= is an structure which
+includes the domain and the coframe is determined by the frame. NB the connection coefficients are
+all set to the default 0 in =nabla.add_coef(e)=.
+
+No such help is available in Mathlib but we can construct a connection via its coefficients ourselves.
 
 Let \(\nabla\) be any Koszul connection thus Leibniz in the second argument:
 
@@ -185,7 +189,10 @@ Writing
 = \sum_{i,j} \varepsilon^j_x(v)\, \Gamma^i_{jk}(x)\, e_i(x).
 \]
 
-Substituting back and relabelling:
+Defining \((\nabla\sigma)(x)(v) \triangleq \nabla_v\sigma\), so that
+\(\nabla\sigma\) is a section of \(\operatorname{Hom}(TM,TM)\) whose
+value at each \(x\) is the map \(v \mapsto \nabla_v\sigma\),
+substituting back and relabelling gives
 
 \[
 (\nabla\sigma)(x)(v) =
@@ -237,19 +244,6 @@ def mercatorCov :
 where interestingly =0 : Fin 2 → Fin 2 → Fin 2 → S2 → ℝ=.
 
 ** TODO Bearings are Parallel
-
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-local infixr:70 " ⊗ " => fun c w => ContinuousLinearMap.smulRight c w
-
-lemma mercatorCov_apply (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
-    (hx : x ∈ sphSource) :
-    mercatorCov σ x =
-      (mvfderiv (𝓡 2) (fun y ↦ ε₁ y (σ y)) x) ⊗ (e₁ x) +
-      (mvfderiv (𝓡 2) (fun y ↦ ε₂ y (σ y)) x) ⊗ (e₂ x) := by
-  simp only [mercatorCov, covDerivOfFrame, if_pos hx, Fin.sum_univ_two,
-    Matrix.cons_val_zero, Matrix.cons_val_one,
-    Pi.zero_apply, zero_mul, zero_smul, Finset.sum_const_zero, add_zero]
-#+end_src
 
 We wanted \(\nabla e_1 = 0\) and \(\nabla e_2 = 0\) but we defined the
 connection via connection coefficients so we had better check that we
@@ -390,6 +384,19 @@ lemma ε₁_e₁ {y : S2} (hy : y ∈ sphSource) : ε₁ y (e₁ y) = 1 :=
       sinθ_ne_zero y (sphSource_subset_S2_open hy)
     simp only [ε₂, e₂, smul_apply, map_smul, smul_eq_mul, dφ_Xφ hy, mul_one]
     field_simp
+#+end_src
+
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+local infixr:70 " ⊗ " => fun c w => ContinuousLinearMap.smulRight c w
+
+lemma mercatorCov_apply (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
+    (hx : x ∈ sphSource) :
+    mercatorCov σ x =
+      (mvfderiv (𝓡 2) (fun y ↦ ε₁ y (σ y)) x) ⊗ (e₁ x) +
+      (mvfderiv (𝓡 2) (fun y ↦ ε₂ y (σ y)) x) ⊗ (e₂ x) := by
+  simp only [mercatorCov, covDerivOfFrame, if_pos hx, Fin.sum_univ_two,
+    Matrix.cons_val_zero, Matrix.cons_val_one,
+    Pi.zero_apply, zero_mul, zero_smul, Finset.sum_const_zero, add_zero]
 #+end_src
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
