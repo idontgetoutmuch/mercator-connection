@@ -73,6 +73,33 @@ Instead let us change what parallel means: two tangent vectors are
 parallel if they have the same compass bearing, that is, they make the same
 angle with a line of longitude.
 
+As an aside, specifying this metric in SageManifolds takes 2 lines:
+
+#+begin_src python :tangle no
+ g = S2.metric('g')
+ g[1,1], g[2,2] = 1, (sin(th))^2
+#+end_src
+
+On the other hand in Lean, this takes 300--400 lines with the final proof being:
+
+#+begin_src lean4 :tangle no
+def roundMetricOnSphSource :
+    Bundle.ContMDiffRiemannianMetric (𝓡 2) ∞ (EuclideanSpace ℝ (Fin 2))
+	(fun x : sphSourceOpens ↦ TangentSpace (𝓡 2) x) where
+  inner := roundInner
+  symm := roundInner_symm
+  pos := roundInner_pos
+  isVonNBounded := roundInner_isVonNBounded
+  contMDiff := roundInner_contMDiff
+#+end_src
+
+The difference is of course that in SageManifolds, we are not required to
+prove anything but in Mathlib we have to prove everything:that the
+coframe expression is positive definite, that a positive-definite
+form's unit ball is bounded, that a section of the bundle of bilinear
+forms is smooth, that the inclusion of an open submanifold has the
+identity as its differential. Further details [[https://github.com/idontgetoutmuch/mercator-connection/blob/main/MercatorConnection/RoundMetric.lean][here]].
+
 ** The Compass Frame
 
 For a bearing to make sense we must have some concept of direction. Recall
