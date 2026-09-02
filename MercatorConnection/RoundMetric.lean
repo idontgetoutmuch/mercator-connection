@@ -257,78 +257,6 @@ lemma roundInner_isVonNBounded (x : sphSourceOpens) :
     IsVonNBounded ℝ {v : TangentSpace (𝓡 2) x | roundInner x v v < 1} :=
   isVonNBounded_of_posDef (F := EuclideanSpace ℝ (Fin 2)) (roundInner x) (roundInner_pos x)
 
-#check @IsBoundedSMul
-#synth IsBoundedSMul ℝ (F₂ →L[ℝ] F₂ →L[ℝ] ℝ)
-
-#check ContinuousLinearMap.smulRight
-#check ContinuousLinearMap.smulRightL
-#check ContinuousLinearMap.smulLeft
-
-#check isBoundedBilinearMap
-
-#check ContinuousLinearMap.smulRightL_apply
-#check ContinuousLinearMap.smulRight_apply
-
-#check ContinuousLinearMap.smulRightL
-#check ContinuousLinearMap.smulRightL_apply
-#check ContinuousLinearMap.smulRight
-
-#synth ContinuousSMul ℝ (F₂ →L[ℝ] F₂ →L[ℝ] ℝ)
-
-#check IsBoundedSMul
-#check isBoundedSMul_iff
-#check isBoundedSMul_of_norm_smul_le
-
-#print IsBoundedSMul
-
-#find _ (IsBoundedBilinearMap ℝ (fun p : ℝ × V => p.1 • p.2))
-
-#check dist_smul
-#check dist_smul₀
-#check dist_smul_eq
-
-#check dist_eq_norm
-#print dist_eq_norm
-
-#check dist_smul₀
-#check dist_smul₀'
-#check dist_smul_eq_norm
-
-example (x : ℝ) (y₁ y₂ : F₂ →L[ℝ] F₂ →L[ℝ] ℝ) :
-    dist (x • y₁) (x • y₂) ≤ dist x 0 * dist y₁ y₂ := by
-  simp [dist_eq_norm]
-  exact sorry
-
-example (x : ℝ) (y₁ y₂ : F₂ →L[ℝ] F₂ →L[ℝ] ℝ) :
-    dist (x • y₁) (x • y₂) ≤ dist x 0 * dist y₁ y₂ := by
-  rw [dist_eq_norm]
-  rw [show x • y₁ - x • y₂ = x • (y₁ - y₂) by
-    exact (smul_sub x y₁ y₂).symm]
-  rw [norm_smul]
-  simp [dist_eq_norm]
-
-#check dist_smul₀
-
-example (x : ℝ) (y₁ y₂ : F₂ →L[ℝ] F₂ →L[ℝ] ℝ) :
-    dist (x • y₁) (x • y₂) ≤ dist x 0 * dist y₁ y₂ := by
-  rw [dist_smul₀]
-  simp [dist_eq_norm]
-
-#synth NormSMulClass ℝ (F₂ →L[ℝ] F₂ →L[ℝ] ℝ)
-
-#print NormSMulClass
-
-#check ContinuousLinearMap.norm_smul
-#check ContinuousLinearMap.norm_smul_le
-
-#synth FiniteDimensional ℝ (F₂ →L[ℝ] F₂ →L[ℝ] ℝ)
-#synth NormedSpace ℝ (F₂ →L[ℝ] F₂ →L[ℝ] ℝ)
-#synth SeminormedAddCommGroup (F₂ →L[ℝ] F₂ →L[ℝ] ℝ)
-
-#print NormedSpace
-
-#check dist_eq_norm'
-
 lemma roundInner_contMDiff :
     ContMDiff (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2) →L[ℝ]
         EuclideanSpace ℝ (Fin 2) →L[ℝ] ℝ)) ∞
@@ -369,11 +297,27 @@ lemma roundInner_contMDiff :
             congr 1
             rw [smul_sub x y₂ y₁]
           _ ≤ ‖x‖ * ‖y₂ - y₁‖ := by exact hnorm
-          _ = dist x 0 * dist y₁ y₂ := by rw [dist_eq_norm' x 0, dist_eq_norm' y₁ y₂]; simp [norm_sub_rev]
+          _ = dist x 0 * dist y₁ y₂ := by rw [dist_eq_norm' x 0, dist_eq_norm' y₁ y₂]; simp
           _ ≤ ‖0 - x‖ * dist y₁ y₂ := by rw [dist_eq_norm' x 0],
       fun x₁ x₂ y => by
-        rw [dist_eq_norm]
-        exact sorry
+        have h1 : dist x₁ x₂ = ‖x₂ - x₁‖ := by
+          exact dist_eq_norm' x₁ x₂
+        have hnorm :=
+          (inferInstance : NormedSpace ℝ
+            (F₂ →L[ℝ] F₂ →L[ℝ] ℝ)).norm_smul_le (x₂ - x₁) y
+        calc
+          dist (x₁ • y) (x₂ • y) = ‖x₂ • y - x₁ • y‖ := by
+            exact dist_eq_norm' (x₁ • y) (x₂ • y)
+          _ = ‖(x₂ - x₁) • y‖ := by
+            congr 1
+            rw [sub_smul x₂ x₁ y]
+          _ ≤ ‖x₂ - x₁‖ * ‖y‖ := by
+            exact hnorm
+          _ = ‖x₂ - x₁‖ * dist y 0 := by
+            rw [dist_eq_norm' y 0]
+            rw [zero_sub y, norm_neg y]
+          _ = dist x₁ x₂ * dist y 0 := by
+            rw [h1]
     ⟩
 
   have hsmul : ContDiff ℝ ∞
@@ -405,7 +349,7 @@ lemma roundInner_contMDiff :
 /-- **The round metric on the chart domain.**  `g = dθ² + sin²θ dφ²` is a smooth Riemannian
 metric on the tangent bundle of the open submanifold `sphSource` of `S2`. -/
 def roundMetricOnSphSource :
-    Bundle.ContMDiffRiemannianMetric (𝓡 2) ⊤ (EuclideanSpace ℝ (Fin 2))
+    Bundle.ContMDiffRiemannianMetric (𝓡 2) ∞ (EuclideanSpace ℝ (Fin 2))
       (fun x : sphSourceOpens ↦ TangentSpace (𝓡 2) x) where
   inner := roundInner
   symm := roundInner_symm
@@ -496,7 +440,10 @@ lemma sphereInner_pos (x : S2) (v : TangentSpace (𝓡 2) x) (hv : v ≠ 0) :
   rw [sphereInner_eq_inner, real_inner_self_eq_norm_sq]
   have h : dIota x v ≠ 0 := by
     intro h
-    exact hv (mfderiv_coe_sphere_injective (n := 2) x (by simpa [dIota] using h))
+    apply hv
+    apply mfderiv_coe_sphere_injective (n := 2) x
+    rw [map_zero]
+    exact h
   positivity
 
 lemma sphereInner_isVonNBounded (x : S2) :
@@ -641,10 +588,27 @@ lemma hasFDerivAt_sphInvVec (q : F₂) :
         + (sin (q 0) * sin (q 1)) • (EuclideanSpace.single 1 1 : E₃)
         + (cos (q 0)) • (EuclideanSpace.single 2 1 : E₃) := funext sphInvVec_eq_smul
   rw [hfun]
-  convert h using 1
-  ext u i
-  fin_cases i <;>
-    simp [sphUvec, sphVvec, EuclideanSpace.single_apply] <;> ring
+  have hEq :
+      ((EuclideanSpace.proj (0 : Fin 2) : F₂ →L[ℝ] ℝ).smulRight (sphUvec (q 0) (q 1))
+        + (EuclideanSpace.proj (1 : Fin 2) : F₂ →L[ℝ] ℝ).smulRight (sphVvec (q 0) (q 1)))
+      =
+      (ContinuousLinearMap.smulRight
+          (sin (q 0) • -sin (q 1) • (EuclideanSpace.proj 1 : F₂ →L[ℝ] ℝ)
+            + cos (q 1) • cos (q 0) • (EuclideanSpace.proj 0 : F₂ →L[ℝ] ℝ))
+          (EuclideanSpace.single 0 1 : E₃)
+        + ContinuousLinearMap.smulRight
+          (sin (q 0) • cos (q 1) • (EuclideanSpace.proj 1 : F₂ →L[ℝ] ℝ)
+            + sin (q 1) • cos (q 0) • (EuclideanSpace.proj 0 : F₂ →L[ℝ] ℝ))
+          (EuclideanSpace.single 1 1 : E₃)
+        + ContinuousLinearMap.smulRight
+          (-sin (q 0) • (EuclideanSpace.proj 0 : F₂ →L[ℝ] ℝ))
+          (EuclideanSpace.single 2 1 : E₃)) := by
+    ext u i
+    fin_cases i <;>
+      simp [sphUvec, sphVvec, EuclideanSpace.proj] <;>
+      ring
+  rw [hEq]
+  exact h
 
 lemma fderiv_sphInvVec_e0 (q : F₂) :
     fderiv ℝ sphInvVec q (EuclideanSpace.single 0 1) = sphUvec (q 0) (q 1) := by
