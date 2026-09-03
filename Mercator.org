@@ -83,9 +83,12 @@ As an aside, specifying this metric in SageManifolds takes 2 lines:
 On the other hand in Lean, this takes 300--400 lines with the final proof being:
 
 #+begin_src lean4 :tangle no
+def roundInner (x : sphSourceOpens) : TangentSpace (𝓡 2) x →L[ℝ] TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
+  dθ x ⊗ dθ x + (Real.sin (θ_coord x)) ^ 2 • dφ x ⊗ dφ x
+
 def roundMetricOnSphSource :
     Bundle.ContMDiffRiemannianMetric (𝓡 2) ∞ (EuclideanSpace ℝ (Fin 2))
-	(fun x : sphSourceOpens ↦ TangentSpace (𝓡 2) x) where
+	  (fun x : sphSourceOpens ↦ TangentSpace (𝓡 2) x) where
   inner := roundInner
   symm := roundInner_symm
   pos := roundInner_pos
@@ -217,8 +220,8 @@ Writing
 \]
 
 Defining \((\nabla\sigma)(x)(v) \triangleq \nabla_v\sigma\), so that
-\(\nabla\sigma\) is a section of \(\operatorname{Hom}(TM,TM)\) whose
-value at each \(x\) is the map \(v \mapsto \nabla_v\sigma\),
+\(\nabla\sigma\) is a section of \(\operatorname{End}(TM)\) whose
+value at each \(x\) is the linear map \(v \mapsto \nabla_v\sigma\),
 substituting back and relabelling gives
 
 \[
@@ -270,20 +273,23 @@ def mercatorCov :
 
 where interestingly =0 : Fin 2 → Fin 2 → Fin 2 → S2 → ℝ=.
 
-** TODO Bearings are Parallel
+** Bearings are Parallel
 
 We wanted \(\nabla e_1 = 0\) and \(\nabla e_2 = 0\) but we defined the
 connection via connection coefficients so we had better check that we
-get what we want:
+get what we want.
+
+First we give a helper lemma. The chart \(\chi : S^2
+\to \mathbb{R}^2\) and its inverse \(\chi^{-1}\) are mutually inverse
+on \(\text{sphSource}\), so \(\chi \circ \chi^{-1} =
+\operatorname{id}\); differentiating this identity and applying the
+chain rule, their differentials compose to the identity too:
+
+\[
+d\chi_x \circ d\chi^{-1}_{\chi(x)} = \operatorname{id}_{\mathbb{R}^2}.
+\]
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-lemma mvfderiv_of_eventuallyEq_const {f : S2 → ℝ} {c : ℝ} {x : S2}
-    (h : f =ᶠ[nhds x] fun _ ↦ c) :
-    mvfderiv (𝓡 2) f x = 0 := by
-  have h1 : mvfderiv (𝓡 2) f x = mvfderiv (𝓡 2) (fun _ : S2 ↦ c) x := h.mfderiv_eq
-  rw [h1]
-  exact mfderiv_const
-
 lemma frame_pairing_pre {x : S2} (hx : x ∈ sphSource) :
     (mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x) ∘SL (mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)) =
      ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) := by
@@ -291,7 +297,6 @@ lemma frame_pairing_pre {x : S2} (hx : x ∈ sphSource) :
     mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
   set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
     mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
-  -- right inverse: `Dfwd ∘ Dinv = id`, mirroring `h_Dinv_Dfwd` in `frame_dual`
   have hxx : sphInv (sphFwd x) = x := sph_left_inv x hx
   have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) := by
     have h_inv : ∀ᶠ q in nhds (sphFwd x), sphFwd (sphInv q) = q :=
@@ -311,109 +316,147 @@ lemma frame_pairing_pre {x : S2} (hx : x ∈ sphSource) :
     rw [hxx] at hcomp
     exact hcomp.symm.trans hid
   exact h_right
-
-lemma frame_pairing00 {x : S2} (hx : x ∈ sphSource) : dθ x (Xθ x) = 1 := by
-  set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
-    mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
-  set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
-    mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
-  have hdθ : dθ x = (EuclideanSpace.proj (0 : Fin 2)).comp Dfwd := by
-    apply HasMFDerivAt.mfderiv
-    apply HasMFDerivAt.comp x
-      (ContinuousLinearMap.hasMFDerivAt (EuclideanSpace.proj (0 : Fin 2)))
-      (sphFwd_mdiffAt hx).hasMFDerivAt
-  have hXθ : Xθ x = Dinv (EuclideanSpace.single (0 : Fin 2) 1) := rfl
-  have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
-    frame_pairing_pre hx
-  have key : Dfwd (Dinv (EuclideanSpace.single (0 : Fin 2) (1 : ℝ)))
-      = EuclideanSpace.single (0 : Fin 2) 1 := by
-    have := congrArg (fun L ↦ L (EuclideanSpace.single (0 : Fin 2) (1 : ℝ))) h_right
-    simpa using this
-  rw [hdθ, hXθ]
-  simp [key]
-
-lemma frame_pairing10 {x : S2} (hx : x ∈ sphSource) : dφ x (Xθ x) = 0 := by
-  set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
-    mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
-  set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
-    mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
-  have hdφ : dφ x = (EuclideanSpace.proj (1 : Fin 2)).comp Dfwd := by
-    apply HasMFDerivAt.mfderiv
-    apply HasMFDerivAt.comp x
-      (ContinuousLinearMap.hasMFDerivAt (EuclideanSpace.proj (1 : Fin 2)))
-      (sphFwd_mdiffAt hx).hasMFDerivAt
-  have hXθ : Xθ x = Dinv (EuclideanSpace.single (0 : Fin 2) 1) := rfl
-  have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
-    frame_pairing_pre hx
-  have key : Dfwd (Dinv (EuclideanSpace.single (0 : Fin 2) (1 : ℝ)))
-      = EuclideanSpace.single (0 : Fin 2) 1 := by
-    have := congrArg (fun L ↦ L (EuclideanSpace.single (0 : Fin 2) (1 : ℝ))) h_right
-    simpa using this
-  rw [hdφ, hXθ]
-  simp [key]
-
-lemma frame_pairing01 {x : S2} (hx : x ∈ sphSource) : dθ x (Xφ x) = 0 := by
-  set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
-    mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
-  set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
-    mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
-  have hdθ : dθ x = (EuclideanSpace.proj (0 : Fin 2)).comp Dfwd := by
-    apply HasMFDerivAt.mfderiv
-    apply HasMFDerivAt.comp x
-      (ContinuousLinearMap.hasMFDerivAt (EuclideanSpace.proj (0 : Fin 2)))
-      (sphFwd_mdiffAt hx).hasMFDerivAt
-  have hXφ : Xφ x = Dinv (EuclideanSpace.single (1 : Fin 2) 1) := rfl
-  have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
-    frame_pairing_pre hx
-  have key : Dfwd (Dinv (EuclideanSpace.single (1 : Fin 2) (1 : ℝ)))
-      = EuclideanSpace.single (1 : Fin 2) 1 := by
-    have := congrArg (fun L ↦ L (EuclideanSpace.single (1 : Fin 2) (1 : ℝ))) h_right
-    simpa using this
-  rw [hdθ, hXφ]
-  simp [key]
-
-lemma frame_pairing11 {x : S2} (hx : x ∈ sphSource) : dφ x (Xφ x) = 1 := by
-  set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
-    mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
-  set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
-    mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
-  have hdφ : dφ x = (EuclideanSpace.proj (1 : Fin 2)).comp Dfwd := by
-    apply HasMFDerivAt.mfderiv
-    apply HasMFDerivAt.comp x
-      (ContinuousLinearMap.hasMFDerivAt (EuclideanSpace.proj (1 : Fin 2)))
-      (sphFwd_mdiffAt hx).hasMFDerivAt
-  have hXφ : Xφ x = Dinv (EuclideanSpace.single (1 : Fin 2) 1) := rfl
-  have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
-    frame_pairing_pre hx
-  have key : Dfwd (Dinv (EuclideanSpace.single (1 : Fin 2) (1 : ℝ)))
-      = EuclideanSpace.single (1 : Fin 2) 1 := by
-    have := congrArg (fun L ↦ L (EuclideanSpace.single (1 : Fin 2) (1 : ℝ))) h_right
-    simpa using this
-  rw [hdφ, hXφ]
-  simp [key]
-
-lemma dθ_Xθ {x : S2} (hx : x ∈ sphSource) : dθ x (Xθ x) = 1 := frame_pairing00 hx
-lemma dφ_Xθ {x : S2} (hx : x ∈ sphSource) : dφ x (Xθ x) = 0 := frame_pairing10 hx
-lemma dθ_Xφ {x : S2} (hx : x ∈ sphSource) : dθ x (Xφ x) = 0 := frame_pairing01 hx
-lemma dφ_Xφ {x : S2} (hx : x ∈ sphSource) : dφ x (Xφ x) = 1 := frame_pairing11 hx
-
-lemma ε₁_e₁ {y : S2} (hy : y ∈ sphSource) : ε₁ y (e₁ y) = 1 :=
-    dθ_Xθ hy
-
-  lemma ε₂_e₁ {y : S2} (hy : y ∈ sphSource) : ε₂ y (e₁ y) = 0 := by
-    simp only [ε₂, e₁, smul_apply, smul_eq_mul, dφ_Xθ hy, mul_zero]
-
-  lemma ε₁_e₂ {y : S2} (hy : y ∈ sphSource) : ε₁ y (e₂ y) = 0 := by
-    simp only [ε₁, e₂, map_smul, smul_eq_mul, dθ_Xφ hy, mul_zero]
-
-  lemma ε₂_e₂ {y : S2} (hy : y ∈ sphSource) : ε₂ y (e₂ y) = 1 := by
-    have hs : Real.sin (θ_coord y) ≠ 0 :=
-      sinθ_ne_zero y (sphSource_subset_S2_open hy)
-    simp only [ε₂, e₂, smul_apply, map_smul, smul_eq_mul, dφ_Xφ hy, mul_one]
-    field_simp
 #+end_src
 
+And so we obtain the duality relations
+\[
+d\theta(X_\theta) = d\phi(X_\phi) = 1, \qquad d\theta(X_\phi) = d\phi(X_\theta) = 0,
+\]
+i.e. \(\{d\theta, d\phi\}\) is the coframe dual to \(\{X_\theta, X_\phi\}\):
+\(\varepsilon^i(e_j) = \delta^i_j\).
+
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+    lemma frame_pairing00 {x : S2} (hx : x ∈ sphSource) : dθ x (Xθ x) = 1 := by
+      set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
+	mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
+      set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
+	mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
+      have hdθ : dθ x = (EuclideanSpace.proj (0 : Fin 2)).comp Dfwd := by
+	apply HasMFDerivAt.mfderiv
+	apply HasMFDerivAt.comp x
+	  (ContinuousLinearMap.hasMFDerivAt (EuclideanSpace.proj (0 : Fin 2)))
+	  (sphFwd_mdiffAt hx).hasMFDerivAt
+      have hXθ : Xθ x = Dinv (EuclideanSpace.single (0 : Fin 2) 1) := rfl
+      have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
+	frame_pairing_pre hx
+      have key : Dfwd (Dinv (EuclideanSpace.single (0 : Fin 2) (1 : ℝ)))
+	  = EuclideanSpace.single (0 : Fin 2) 1 := by
+	have := congrArg (fun L ↦ L (EuclideanSpace.single (0 : Fin 2) (1 : ℝ))) h_right
+	simpa using this
+      rw [hdθ, hXθ]
+      simp [key]
+
+    lemma frame_pairing10 {x : S2} (hx : x ∈ sphSource) : dφ x (Xθ x) = 0 := by
+      set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
+	mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
+      set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
+	mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
+      have hdφ : dφ x = (EuclideanSpace.proj (1 : Fin 2)).comp Dfwd := by
+	apply HasMFDerivAt.mfderiv
+	apply HasMFDerivAt.comp x
+	  (ContinuousLinearMap.hasMFDerivAt (EuclideanSpace.proj (1 : Fin 2)))
+	  (sphFwd_mdiffAt hx).hasMFDerivAt
+      have hXθ : Xθ x = Dinv (EuclideanSpace.single (0 : Fin 2) 1) := rfl
+      have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
+	frame_pairing_pre hx
+      have key : Dfwd (Dinv (EuclideanSpace.single (0 : Fin 2) (1 : ℝ)))
+	  = EuclideanSpace.single (0 : Fin 2) 1 := by
+	have := congrArg (fun L ↦ L (EuclideanSpace.single (0 : Fin 2) (1 : ℝ))) h_right
+	simpa using this
+      rw [hdφ, hXθ]
+      simp [key]
+
+    lemma frame_pairing01 {x : S2} (hx : x ∈ sphSource) : dθ x (Xφ x) = 0 := by
+      set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
+	mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
+      set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
+	mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
+      have hdθ : dθ x = (EuclideanSpace.proj (0 : Fin 2)).comp Dfwd := by
+	apply HasMFDerivAt.mfderiv
+	apply HasMFDerivAt.comp x
+	  (ContinuousLinearMap.hasMFDerivAt (EuclideanSpace.proj (0 : Fin 2)))
+	  (sphFwd_mdiffAt hx).hasMFDerivAt
+      have hXφ : Xφ x = Dinv (EuclideanSpace.single (1 : Fin 2) 1) := rfl
+      have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
+	frame_pairing_pre hx
+      have key : Dfwd (Dinv (EuclideanSpace.single (1 : Fin 2) (1 : ℝ)))
+	  = EuclideanSpace.single (1 : Fin 2) 1 := by
+	have := congrArg (fun L ↦ L (EuclideanSpace.single (1 : Fin 2) (1 : ℝ))) h_right
+	simpa using this
+      rw [hdθ, hXφ]
+      simp [key]
+
+    lemma frame_pairing11 {x : S2} (hx : x ∈ sphSource) : dφ x (Xφ x) = 1 := by
+      set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
+	mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
+      set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
+	mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
+      have hdφ : dφ x = (EuclideanSpace.proj (1 : Fin 2)).comp Dfwd := by
+	apply HasMFDerivAt.mfderiv
+	apply HasMFDerivAt.comp x
+	  (ContinuousLinearMap.hasMFDerivAt (EuclideanSpace.proj (1 : Fin 2)))
+	  (sphFwd_mdiffAt hx).hasMFDerivAt
+      have hXφ : Xφ x = Dinv (EuclideanSpace.single (1 : Fin 2) 1) := rfl
+      have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
+	frame_pairing_pre hx
+      have key : Dfwd (Dinv (EuclideanSpace.single (1 : Fin 2) (1 : ℝ)))
+	  = EuclideanSpace.single (1 : Fin 2) 1 := by
+	have := congrArg (fun L ↦ L (EuclideanSpace.single (1 : Fin 2) (1 : ℝ))) h_right
+	simpa using this
+      rw [hdφ, hXφ]
+      simp [key]
+
+    lemma dθ_Xθ {x : S2} (hx : x ∈ sphSource) : dθ x (Xθ x) = 1 := frame_pairing00 hx
+    lemma dφ_Xθ {x : S2} (hx : x ∈ sphSource) : dφ x (Xθ x) = 0 := frame_pairing10 hx
+    lemma dθ_Xφ {x : S2} (hx : x ∈ sphSource) : dθ x (Xφ x) = 0 := frame_pairing01 hx
+    lemma dφ_Xφ {x : S2} (hx : x ∈ sphSource) : dφ x (Xφ x) = 1 := frame_pairing11 hx
+#+end_src
+
+This is pure duality, a covector applied to a vector, and uses no metric.
+The compass frame and coframe inherit the same duality, \(\varepsilon^i(e_j) = \delta^i_j\),
+since they differ from the coordinate ones only by the reciprocal factors
+\(e_2 = (1/\sin\theta)\,X_\phi\) and \(\varepsilon^2 = \sin\theta\,d\phi\).
+
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+lemma ε₁_e₁ {y : S2} (hy : y ∈ sphSource) : ε₁ y (e₁ y) = 1 :=
+	dθ_Xθ hy
+
+lemma ε₂_e₁ {y : S2} (hy : y ∈ sphSource) : ε₂ y (e₁ y) = 0 := by
+	simp only [ε₂, e₁, smul_apply, smul_eq_mul, dφ_Xθ hy, mul_zero]
+
+lemma ε₁_e₂ {y : S2} (hy : y ∈ sphSource) : ε₁ y (e₂ y) = 0 := by
+	simp only [ε₁, e₂, map_smul, smul_eq_mul, dθ_Xφ hy, mul_zero]
+
+lemma ε₂_e₂ {y : S2} (hy : y ∈ sphSource) : ε₂ y (e₂ y) = 1 := by
+	have hs : Real.sin (θ_coord y) ≠ 0 :=
+	  sinθ_ne_zero y (sphSource_subset_S2_open hy)
+	simp only [ε₂, e₂, smul_apply, map_smul, smul_eq_mul, dφ_Xφ hy, mul_one]
+	field_simp
+#+end_src
+
+Duality is not orthonormality: that is a statement about the metric, not about
+pairing covectors with vectors. Feeding the coordinate frame into
+\(g = d\theta^2 + \sin^2\theta\,d\phi^2\) gives
+\[
+g(X_\theta, X_\theta) = 1, \qquad g(X_\phi, X_\phi) = \sin^2\theta, \qquad g(X_\theta, X_\phi) = 0,
+\]
+so \(\{X_\theta, X_\phi\}\) is orthogonal but *not* orthonormal: the longitude
+vector \(X_\phi\) has length \(\sin\theta\), shrinking to zero at the poles as the
+meridians converge. Rescaling by exactly that factor cures it: with
+\(e_1 = X_\theta\) and \(e_2 = (1/\sin\theta)\,X_\phi\),
+\[
+g(e_1, e_1) = g(e_2, e_2) = 1, \qquad g(e_1, e_2) = 0,
+\]
+so \(\{e_1, e_2\}\) is orthonormal.
+
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
+lemma mvfderiv_of_eventuallyEq_const {f : S2 → ℝ} {c : ℝ} {x : S2}
+    (h : f =ᶠ[nhds x] fun _ ↦ c) :
+    mvfderiv (𝓡 2) f x = 0 := by
+  have h1 : mvfderiv (𝓡 2) f x = mvfderiv (𝓡 2) (fun _ : S2 ↦ c) x := h.mfderiv_eq
+  rw [h1]
+  exact mfderiv_const
+
 local infixr:70 " ⊗ " => fun c w => ContinuousLinearMap.smulRight c w
 
 lemma mercatorCov_apply (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}

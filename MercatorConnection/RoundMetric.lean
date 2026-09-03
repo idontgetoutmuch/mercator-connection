@@ -357,6 +357,15 @@ def roundMetricOnSphSource :
   isVonNBounded := roundInner_isVonNBounded
   contMDiff := roundInner_contMDiff
 
+local infixr:75 " ⊗ " => fun c w => ContinuousLinearMap.smulRight c w
+
+def roundInner' (x : sphSourceOpens) :
+    TangentSpace (𝓡 2) x →L[ℝ] TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
+  dθ (x : S2) ⊗ dθ (x : S2)
+    + (Real.sin (θ_coord (x : S2))) ^ 2 • (dφ (x : S2) ⊗ dφ (x : S2))
+
+lemma roundInner'_eq (x : sphSourceOpens) : roundInner' x = roundInner x := rfl
+
 end RoundOnSphSource
 
 /-! ## (b) A Riemannian metric on all of `S2`
