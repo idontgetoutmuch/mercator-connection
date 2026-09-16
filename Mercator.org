@@ -1,13 +1,15 @@
+# -*- indent-tabs-mode: nil; org-src-preserve-indentation: t; -*-
 #+TITLE: The Mercator Connection on S²
 #+AUTHOR: Dominic Steinitz
 #+DATE: 2026-07-07
 #+bibliography: DiffGeom.bib
 #+cite_export: csl
 #+OPTIONS: toc:nil num:nil
-#+PROPERTY: header-args:lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean :comments no :eval never
+#+OPTIONS: :eval never-export
+#+PROPERTY: header-args:lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean :comments no :dir /Users/dom/mercator-connection
+#+PROPERTY: header-args:lean4 :dir /Users/dom/mercator-connection :eval never-export
 #+LATEX_HEADER: \setlength{\parskip}{\medskipamount}
 #+LATEX_HEADER: \setlength{\parindent}{0pt}
-# -*- indent-tabs-mode: nil; org-src-preserve-indentation: t; -*-
 
 * Foreword
 
@@ -43,20 +45,37 @@ The connection we construct cannot exist on the entire sphere as we
 are going to need to define a orthogonal frame and by the [[https://en.wikipedia.org/wiki/Hairy_ball_theorem][hairy ball
 theorem]] such a frame cannot exist on all of \(S^2\). We will instead
 define the connection on an open subset and for convenience let us
-take that to be the spherical coordinate chart on \(S^2\), that is the map
+take that to be the spherical coordinate chart on \(S^2\), that is the inverse of the map
 \((\theta, \phi) \mapsto (\sin\theta \cos\phi, \sin\theta \sin\phi, \cos\theta)\),
 with \(\theta \in (0, \pi)\), the angle from the north pole and \(\phi \in (0, 2\pi)\) the
 longitude. In Lean we can write the inverse chart map as
 
-#+begin_src lean4 :tangle no
-def sphSource : Set S2 := {p | 0 < p.val 0 ∨ p.val 1 ≠ 0}
-
-noncomputable def sphInvVec (q : EuclideanSpace ℝ (Fin 2)) : EuclideanSpace ℝ (Fin 3) :=
-    (WithLp.equiv 2 (Fin 3 → ℝ)).symm
-      ![Real.sin (q 0) * Real.cos (q 1),
-	Real.sin (q 0) * Real.sin (q 1),
-	Real.cos (q 0)]
+#+begin_src lean4 :eval no-export :results output :exports results
+import MercatorConnection.MercatorGeom
+#check sphSource = {p | 0 < p.val 0 ∨ p.val 1 ≠ 0}
 #+end_src
+
+#+RESULTS:
+: sphSource = {p | 0 < (↑p).ofLp 0 ∨ (↑p).ofLp 1 ≠ 0} : Prop
+
+#+begin_src lean4 :eval no-export :results output :exports results
+import MercatorConnection.MercatorGeom
+#print sphInvVec
+#+end_src
+
+#+RESULTS:
+: def sphInvVec : EuclideanSpace ℝ (Fin 2) → EuclideanSpace ℝ (Fin 3) :=
+: fun q =>
+:   (WithLp.equiv 2 (Fin 3 → ℝ)).symm
+:     ![Real.sin (q.ofLp 0) * Real.cos (q.ofLp 1), Real.sin (q.ofLp 0) * Real.sin (q.ofLp 1), Real.cos (q.ofLp 0)]
+
+If \(\psi\) is the chart map then
+
+\[\psi^{-1}(\theta, \phi)=(\sin \theta \cos \phi, \sin \theta \sin \phi, \cos \theta)\]
+
+and
+
+\[\psi=(\theta, \phi): S^2 \rightarrow \mathbb{R}^2, \quad \theta:=\pi^1 \circ \psi, \quad \phi:=\pi^2 \circ \psi\]
 
 NB this is just a chart not the Mercator projection; we will soon define that.
 
@@ -80,21 +99,18 @@ As an aside, specifying this metric in SageManifolds takes 2 lines:
  g[1,1], g[2,2] = 1, (sin(th))^2
 #+end_src
 
-On the other hand in Lean, this takes 300--400 lines with the final proof being:
+On the other hand in Lean, this takes 300--400 lines as Lean demands that the purported metric really is metric:
 
-#+begin_src lean4 :tangle no
-def roundInner (x : sphSourceOpens) : TangentSpace (𝓡 2) x →L[ℝ] TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
-  dθ x ⊗ dθ x + (Real.sin (θ_coord x)) ^ 2 • dφ x ⊗ dφ x
-
-def roundMetricOnSphSource :
-    Bundle.ContMDiffRiemannianMetric (𝓡 2) ∞ (EuclideanSpace ℝ (Fin 2))
-	  (fun x : sphSourceOpens ↦ TangentSpace (𝓡 2) x) where
-  inner := roundInner
-  symm := roundInner_symm
-  pos := roundInner_pos
-  isVonNBounded := roundInner_isVonNBounded
-  contMDiff := roundInner_contMDiff
+#+begin_src lean4 :eval no-export :results output :exports results
+import MercatorConnection.RoundMetric
+#print roundInner
 #+end_src
+
+#+RESULTS:
+: def roundInner : (x : ↥sphSourceOpens) →
+:   TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin 2))) x →L[ℝ]
+:     TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin 2))) x →L[ℝ] ℝ :=
+: fun x => (dθ ↑x).smulRight (dθ ↑x) + Real.sin (θ_coord ↑x) ^ 2 • (dφ ↑x).smulRight (dφ ↑x)
 
 The difference is of course that in SageManifolds, we are not required to
 prove anything but in Mathlib we have to prove everything:that the
@@ -104,6 +120,59 @@ forms is smooth, that the inclusion of an open submanifold has the
 identity as its differential. Further details [[https://github.com/idontgetoutmuch/mercator-connection/blob/main/MercatorConnection/RoundMetric.lean][here]].
 
 ** The Compass Frame
+
+For our chart map \(\psi : S^2 \rightarrow \mathbb{R}^2 \), we have
+
+#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean :exports none
+import Mathlib
+import MercatorConnection.MercatorGeom
+
+open Real Set Metric Manifold Bundle
+open scoped BigOperators Manifold ContDiff
+
+noncomputable section
+
+variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+#+end_src
+
+#+begin_src lean4 :eval yes :results output :exports results :wrap example
+import MercatorConnection.MercatorGeom
+#print θ_coord
+#print φ_coord
+#+end_src
+
+#+RESULTS:
+#+begin_example
+def θ_coord : ↑S2 → ℝ :=
+fun x => (↑sphericalChart x).ofLp 0
+def φ_coord : ↑S2 → ℝ :=
+fun x => (↑sphericalChart x).ofLp 1
+#+end_example
+
+\[\left.\partial_\theta\right|_p f:=\left.\frac{\partial(f \circ \psi^{-1})}{\partial x^1}\right|_{\psi(p)} \underset{(1)}{=} d(f \circ \psi^{-1})_{\psi(p)}\left(e_1\right) \underset{(3)}{=} d f_p\left(d \psi^{-1}_{\psi(p)}\left(e_1\right)\right) \underset{(4)}{=}\left(d \psi^{-1}_{\psi(p)}\left(e_1\right)\right) f\]
+
+by differentiation in \(\mathbb{R}^2\), the chain rule, definition of a tangent vector on a function and
+and as this holds for all \(f\), the two vectors are equal.
+
+Thus in Lean we can write the charte vector fields (and while we are about it their corresponding covectors) as:
+
+#+begin_src lean4 :eval yes :results output :exports results
+import MercatorConnection.MercatorGeom
+#print Xθ
+#print Xφ
+#print dθ
+#print dφ
+#+end_src
+
+#+RESULTS:
+: def Xθ : (x : ↑S2) → TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin 2))) x :=
+: fun x => (mfderiv% sphInv (sphFwd x)) (EuclideanSpace.single 0 1)
+: def Xφ : (x : ↑S2) → TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin 2))) x :=
+: fun x => (mfderiv% sphInv (sphFwd x)) (EuclideanSpace.single 1 1)
+: def dθ : (x : ↑S2) → TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin 2))) x →L[ℝ] ℝ :=
+: fun x => mfderiv% θ_coord x
+: def dφ : (x : ↑S2) → TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin 2))) x →L[ℝ] ℝ :=
+: fun x => mfderiv% φ_coord x
 
 For a bearing to make sense we must have some concept of direction. Recall
 the metric at a point is an inner product \(g_x\) on the tangent space
@@ -123,38 +192,8 @@ the north pole) and the angle of a bearing to a meridian is
 \]
 
 so we should take that as one component of our frame \(e_1 =
-\partial\theta\) and then we are forced by the metric to choose \(e_2
-= (1 / \sin{\theta})\partial\phi\).
-
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean :exports none
-import Mathlib
-import MercatorConnection.MercatorGeom
-
-open Real Set Metric Manifold Bundle
-open scoped BigOperators Manifold ContDiff
-
-noncomputable section
-
-variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
-#+end_src
-
-In Lean we can write these (and while we are about it their orthonormal covectors) as:
-
-#+begin_src lean4 :tangle no
-noncomputable def Xθ (x : S2) : TangentSpace (𝓡 2) x :=
-  mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
-    (EuclideanSpace.single (0 : Fin 2) (1 : ℝ))
-
-noncomputable def Xφ (x : S2) : TangentSpace (𝓡 2) x :=
-mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
-  (EuclideanSpace.single (1 : Fin 2) (1 : ℝ))
-
-noncomputable def dθ (x : S2) : TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
-  mfderiv (𝓡 2) 𝓘(ℝ, ℝ) θ_coord x
-
-noncomputable def dφ (x : S2) : TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
-  mfderiv (𝓡 2) 𝓘(ℝ, ℝ) φ_coord x
-#+end_src
+\partial_\theta\) and then we are forced by the metric to choose \(e_2
+= (1 / \sin{\theta})\partial_\phi\).
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
 def e₁ : Π x : S2, TangentSpace (𝓡 2) x := Xθ
@@ -177,13 +216,13 @@ connection $\nabla$ with $\nabla e_1 = \nabla e_2 = 0$.
 In SageManifolds we can just say =nabla.add_coef(e)= to specify a
 covariant derivative by its connection coefficients =Γ= relative to a
 frame =e= with dual coframe =ε=, supported on a set =s=. Well the
-coframe and the valid set do not need to specified: in SageManifolds, =e= is an structure which
+coframe and the valid set do not need to specified: in SageManifolds, =e= is a structure which
 includes the domain and the coframe is determined by the frame. NB the connection coefficients are
 all set to the default 0 in =nabla.add_coef(e)=.
 
 No such help is available in Mathlib but we can construct a connection via its coefficients ourselves.
 
-Let \(\nabla\) be any Koszul connection thus Leibniz in the second argument:
+Let \(\nabla\) be any [[https://en.wikipedia.org/wiki/Connection_(vector_bundle)][Koszul connection]] thus Leibniz in the second argument:
 
 \[\nabla_v(f\sigma) = (df|_x(v))\,\sigma(x) + f(x)\,\nabla_v\sigma\]
 
@@ -279,138 +318,26 @@ We wanted \(\nabla e_1 = 0\) and \(\nabla e_2 = 0\) but we defined the
 connection via connection coefficients so we had better check that we
 get what we want.
 
-First we give a helper lemma. The chart \(\chi : S^2
-\to \mathbb{R}^2\) and its inverse \(\chi^{-1}\) are mutually inverse
-on \(\text{sphSource}\), so \(\chi \circ \chi^{-1} =
-\operatorname{id}\); differentiating this identity and applying the
-chain rule, their differentials compose to the identity too:
-
-\[
-d\chi_x \circ d\chi^{-1}_{\chi(x)} = \operatorname{id}_{\mathbb{R}^2}.
-\]
-
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-lemma frame_pairing_pre {x : S2} (hx : x ∈ sphSource) :
-    (mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x) ∘SL (mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)) =
-     ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) := by
-  set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
-    mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
-  set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
-    mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
-  have hxx : sphInv (sphFwd x) = x := sph_left_inv x hx
-  have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) := by
-    have h_inv : ∀ᶠ q in nhds (sphFwd x), sphFwd (sphInv q) = q :=
-      Filter.eventually_of_mem (IsOpen.mem_nhds sph_open_target (sph_map_source hx))
-        fun q hq => sph_right_inv q hq
-    have hid : mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2))
-        (sphFwd ∘ sphInv) (sphFwd x)
-        = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
-      HasMFDerivAt.mfderiv
-        (HasMFDerivAt.congr_of_eventuallyEq (hasMFDerivAt_id _) h_inv)
-    have hg : MDifferentiableAt (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd
-        (sphInv (sphFwd x)) := by
-      rw [hxx]; exact sphFwd_mdiffAt hx
-    have hf : MDifferentiableAt 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x) :=
-      sphInv_contMDiff.contMDiffAt.mdifferentiableAt (by norm_num)
-    have hcomp := mfderiv_comp (sphFwd x) hg hf
-    rw [hxx] at hcomp
-    exact hcomp.symm.trans hid
-  exact h_right
-#+end_src
-
-And so we obtain the duality relations
+First let us check the duality relations
 \[
 d\theta(X_\theta) = d\phi(X_\phi) = 1, \qquad d\theta(X_\phi) = d\phi(X_\theta) = 0,
 \]
 i.e. \(\{d\theta, d\phi\}\) is the coframe dual to \(\{X_\theta, X_\phi\}\):
-\(\varepsilon^i(e_j) = \delta^i_j\).
+\(\varepsilon^i(e_j) = \delta^i_j\) which Lean confirms:
 
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-    lemma frame_pairing00 {x : S2} (hx : x ∈ sphSource) : dθ x (Xθ x) = 1 := by
-      set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
-	mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
-      set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
-	mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
-      have hdθ : dθ x = (EuclideanSpace.proj (0 : Fin 2)).comp Dfwd := by
-	apply HasMFDerivAt.mfderiv
-	apply HasMFDerivAt.comp x
-	  (ContinuousLinearMap.hasMFDerivAt (EuclideanSpace.proj (0 : Fin 2)))
-	  (sphFwd_mdiffAt hx).hasMFDerivAt
-      have hXθ : Xθ x = Dinv (EuclideanSpace.single (0 : Fin 2) 1) := rfl
-      have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
-	frame_pairing_pre hx
-      have key : Dfwd (Dinv (EuclideanSpace.single (0 : Fin 2) (1 : ℝ)))
-	  = EuclideanSpace.single (0 : Fin 2) 1 := by
-	have := congrArg (fun L ↦ L (EuclideanSpace.single (0 : Fin 2) (1 : ℝ))) h_right
-	simpa using this
-      rw [hdθ, hXθ]
-      simp [key]
-
-    lemma frame_pairing10 {x : S2} (hx : x ∈ sphSource) : dφ x (Xθ x) = 0 := by
-      set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
-	mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
-      set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
-	mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
-      have hdφ : dφ x = (EuclideanSpace.proj (1 : Fin 2)).comp Dfwd := by
-	apply HasMFDerivAt.mfderiv
-	apply HasMFDerivAt.comp x
-	  (ContinuousLinearMap.hasMFDerivAt (EuclideanSpace.proj (1 : Fin 2)))
-	  (sphFwd_mdiffAt hx).hasMFDerivAt
-      have hXθ : Xθ x = Dinv (EuclideanSpace.single (0 : Fin 2) 1) := rfl
-      have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
-	frame_pairing_pre hx
-      have key : Dfwd (Dinv (EuclideanSpace.single (0 : Fin 2) (1 : ℝ)))
-	  = EuclideanSpace.single (0 : Fin 2) 1 := by
-	have := congrArg (fun L ↦ L (EuclideanSpace.single (0 : Fin 2) (1 : ℝ))) h_right
-	simpa using this
-      rw [hdφ, hXθ]
-      simp [key]
-
-    lemma frame_pairing01 {x : S2} (hx : x ∈ sphSource) : dθ x (Xφ x) = 0 := by
-      set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
-	mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
-      set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
-	mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
-      have hdθ : dθ x = (EuclideanSpace.proj (0 : Fin 2)).comp Dfwd := by
-	apply HasMFDerivAt.mfderiv
-	apply HasMFDerivAt.comp x
-	  (ContinuousLinearMap.hasMFDerivAt (EuclideanSpace.proj (0 : Fin 2)))
-	  (sphFwd_mdiffAt hx).hasMFDerivAt
-      have hXφ : Xφ x = Dinv (EuclideanSpace.single (1 : Fin 2) 1) := rfl
-      have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
-	frame_pairing_pre hx
-      have key : Dfwd (Dinv (EuclideanSpace.single (1 : Fin 2) (1 : ℝ)))
-	  = EuclideanSpace.single (1 : Fin 2) 1 := by
-	have := congrArg (fun L ↦ L (EuclideanSpace.single (1 : Fin 2) (1 : ℝ))) h_right
-	simpa using this
-      rw [hdθ, hXφ]
-      simp [key]
-
-    lemma frame_pairing11 {x : S2} (hx : x ∈ sphSource) : dφ x (Xφ x) = 1 := by
-      set Dfwd : TangentSpace (𝓡 2) x →L[ℝ] EuclideanSpace ℝ (Fin 2) :=
-	mfderiv (𝓡 2) 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) sphFwd x
-      set Dinv : EuclideanSpace ℝ (Fin 2) →L[ℝ] TangentSpace (𝓡 2) x :=
-	mfderiv 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)) (𝓡 2) sphInv (sphFwd x)
-      have hdφ : dφ x = (EuclideanSpace.proj (1 : Fin 2)).comp Dfwd := by
-	apply HasMFDerivAt.mfderiv
-	apply HasMFDerivAt.comp x
-	  (ContinuousLinearMap.hasMFDerivAt (EuclideanSpace.proj (1 : Fin 2)))
-	  (sphFwd_mdiffAt hx).hasMFDerivAt
-      have hXφ : Xφ x = Dinv (EuclideanSpace.single (1 : Fin 2) 1) := rfl
-      have h_right : Dfwd.comp Dinv = ContinuousLinearMap.id ℝ (EuclideanSpace ℝ (Fin 2)) :=
-	frame_pairing_pre hx
-      have key : Dfwd (Dinv (EuclideanSpace.single (1 : Fin 2) (1 : ℝ)))
-	  = EuclideanSpace.single (1 : Fin 2) 1 := by
-	have := congrArg (fun L ↦ L (EuclideanSpace.single (1 : Fin 2) (1 : ℝ))) h_right
-	simpa using this
-      rw [hdφ, hXφ]
-      simp [key]
-
-    lemma dθ_Xθ {x : S2} (hx : x ∈ sphSource) : dθ x (Xθ x) = 1 := frame_pairing00 hx
-    lemma dφ_Xθ {x : S2} (hx : x ∈ sphSource) : dφ x (Xθ x) = 0 := frame_pairing10 hx
-    lemma dθ_Xφ {x : S2} (hx : x ∈ sphSource) : dθ x (Xφ x) = 0 := frame_pairing01 hx
-    lemma dφ_Xφ {x : S2} (hx : x ∈ sphSource) : dφ x (Xφ x) = 1 := frame_pairing11 hx
+#+begin_src lean4 :eval yes :results output :exports results
+import MercatorConnection.MercatorGeom
+#check @dθ_Xθ
+#check @dφ_Xθ
+#check @dθ_Xφ
+#check @dφ_Xφ
 #+end_src
+
+#+RESULTS:
+: @dθ_Xθ : ∀ {x : ↑S2}, x ∈ sphSource → (dθ x) (Xθ x) = 1
+: @dφ_Xθ : ∀ {x : ↑S2}, x ∈ sphSource → (dφ x) (Xθ x) = 0
+: @dθ_Xφ : ∀ {x : ↑S2}, x ∈ sphSource → (dθ x) (Xφ x) = 0
+: @dφ_Xφ : ∀ {x : ↑S2}, x ∈ sphSource → (dφ x) (Xφ x) = 1
 
 This is pure duality, a covector applied to a vector, and uses no metric.
 The compass frame and coframe inherit the same duality, \(\varepsilon^i(e_j) = \delta^i_j\),
