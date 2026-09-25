@@ -19,13 +19,21 @@ scaffolding. Given that my Python skills are rudimentary, I looked for
 something where I could write the scaffolding myself if need be, and
 alighted on Mathlib. A question about whether I could recreate my
 earlier blog post on connections with torsion in Mathlib got an
-encouraging response — and thus began my Lean journey. That response
+encouraging response and thus began my Lean journey. That response
 now looks extremely optimistic: even today some of the scaffolding
-does not exist. Be that as it may, I have recast what I wrote in
-SageManifolds using Lean and Mathlib. I got some way, but the section
-on geodesics still depends on a PR that contains =sorry= s.
+does not exist. Be that as it may, I have recast most of what I wrote
+in SageManifolds using Lean and Mathlib. The exception is geodesics,
+and with them the rhumb lines, which depend on a PR that still has
+=sorry= in it; they will have to wait for a later post.
 
-** Introduction
+In this post a connection means a [[https://en.wikipedia.org/wiki/Connection_(vector_bundle)][Koszul connection]], that is, a
+covariant derivative, since that is what Mathlib provides. The
+Ehresmann connection that started all this will be the subject of the
+next post, where it also explains a puzzle we meet at the end of this
+one: why connection coefficients (Christoffel symbols) are not tensors,
+and why they transform the way they do.
+
+* Introduction
 
 In most presentations of Riemannian geometry, e.g. [cite/t:@o1983semi] and [[https://en.wikipedia.org/wiki/Fundamental_theorem_of_Riemannian_geometry][Wikipedia]],
 the fundamental theorem of Riemannian geometry ("the miracle of
@@ -41,14 +49,78 @@ e.g. [cite/t:@Nakahara2003], allude to this but leave the details to the
 reader. Moreover, this connection respects the metric induced from
 Euclidean space (in fact we will construct it so it does this).
 
-The connection we construct cannot exist on the entire sphere as we
-are going to need to define a orthogonal frame and by the [[https://en.wikipedia.org/wiki/Hairy_ball_theorem][hairy ball
-theorem]] such a frame cannot exist on all of \(S^2\). We will instead
-define the connection on an open subset and for convenience let us
-take that to be the spherical coordinate chart on \(S^2\), that is the inverse of the map
+We will construct the connection by declaring the compass directions,
+due south and due east, to be parallel. Such a connection cannot exist
+on the entire sphere: at the poles the compass directions make no
+sense, since due south at the North Pole would have to point down
+every meridian at once. The [[https://en.wikipedia.org/wiki/Hairy_ball_theorem][hairy ball theorem]] says this is
+unavoidable: there is not even a single nowhere-vanishing vector field
+on \(S^2\), let alone a frame. The compass frame, and with it the
+connection, lives on the sphere minus the two poles; we show below
+that it cannot be extended across a pole. For convenience we will
+work on the spherical coordinate chart on \(S^2\), that is the inverse
+of the map
 \((\theta, \phi) \mapsto (\sin\theta \cos\phi, \sin\theta \sin\phi, \cos\theta)\),
-with \(\theta \in (0, \pi)\), the angle from the north pole and \(\phi \in (0, 2\pi)\) the
-longitude. In Lean we can write the inverse chart map as
+with \(\theta \in (0, \pi)\), the angle from the north pole and
+\(\phi \in (0, 2\pi)\) the longitude. In Lean we can write the inverse
+chart map as
+
+[... existing Lean blocks, round metric etc. ...]
+
+* Koszul and Ehresmann Connections
+
+The textbook definition asks that \(\nabla_X\sigma\) be linear over the
+smooth functions in \(X\), and additive with a Leibniz rule in
+\(\sigma\). Mathlib instead takes \((\nabla\sigma)(x)\) to be a
+continuous linear map from the tangent space at \(x\), so linearity in
+the direction is built in, and only additivity and Leibniz in
+\(\sigma\) remain as axioms. Every Mathlib connection gives a textbook
+one, by setting \((\nabla_X\sigma)(x) = (\nabla\sigma)(x)(X(x))\), and in
+finite dimensions the converse also holds: a bump-function argument
+shows that linearity over the smooth functions forces
+\((\nabla_X\sigma)(x)\) to depend only on the vector \(X(x)\).
+Mathlib's definition is the more restrictive one, and it says directly
+what a connection is for: differentiating a section at a point in the
+direction of a tangent vector.
+
+The pointwise form is also, to me at any rate, the more intuitive one.
+Given a curve \(\gamma\) and a vector field \(V\) defined on an open
+set containing it,
+\[
+\nabla_{\gamma'(t)} V = (\nabla V)(\gamma(t))\big(\gamma'(t)\big)
+\]
+is the covariant derivative of \(V\) at the point \(\gamma(t)\) in the
+direction in which the curve is moving: a vector field, a point and a
+direction, and nothing else. The textbook form, by contrast, requires
+the direction to be a whole vector field \(X\), even though only its
+value at the point matters. We say \(V\) is /parallel/ along
+\(\gamma\) if this derivative is zero at every point of the curve: as
+we move along \(\gamma\), \(V\) does not change, in the sense that the
+connection defines. Only the values of \(V\) on the curve matter, and
+given a starting vector \(v\) at \(\gamma(0)\) there is exactly one
+parallel \(V\) along \(\gamma\) with \(V(0) = v\) (by the existence
+and uniqueness of solutions to linear ODEs); its values are the
+/parallel translates/ of \(v\).
+
+This is also where the Ehresmann picture comes in. A point of the
+/frame bundle/ is a point of the manifold together with a basis of the
+tangent space there. Some directions in the frame bundle are there
+without any connection: keeping the point fixed and changing only the
+frame. These are the /vertical/ directions. What a connection adds is
+a choice of complementary /horizontal/ directions: ways of moving the
+point while carrying the frame along, which is what connects one fibre
+to its neighbours.
+
+A curve of frames is horizontal if its vectors are parallel along the
+underlying curve, in the sense just described: loosely, the frame is
+carried along without turning. But what counts as "turning" is exactly
+what the connection decides. For the Mercator connection, not turning
+means keeping the same compass bearing, so a frame carried along a
+circle of latitude does not turn. For the Levi-Civita connection, not
+turning means not rotating about the normal to the sphere. This is
+what the swing of a Foucault pendulum does, and by that standard it is
+the compass directions on the ground that turn, which is why the
+pendulum appears to precess.
 
 #+begin_src lean4 :eval no-export :results output :exports results
 import MercatorConnection.MercatorGeom
@@ -119,7 +191,7 @@ form's unit ball is bounded, that a section of the bundle of bilinear
 forms is smooth, that the inclusion of an open submanifold has the
 identity as its differential. Further details [[https://github.com/idontgetoutmuch/mercator-connection/blob/main/MercatorConnection/RoundMetric.lean][here]].
 
-** The Compass Frame
+* The Compass Frame
 
 For our chart map \(\psi : S^2 \rightarrow \mathbb{R}^2 \), we have
 
@@ -207,7 +279,7 @@ def ε₂ : Π x : S2, TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
   fun x ↦ Real.sin (θ_coord x) • dφ x
 #+end_src
 
-** Connections from Coefficients in a Frame
+* Connections from Coefficients in a Frame
 
 Now we can define two vectors to be parallel if their angles to a
 given meridian are the same. For this to be true we must have a
@@ -312,7 +384,7 @@ def mercatorCov :
 
 where interestingly =0 : Fin 2 → Fin 2 → Fin 2 → S2 → ℝ=.
 
-** Bearings are Parallel
+* Bearings are Parallel
 
 We wanted \(\nabla e_1 = 0\) and \(\nabla e_2 = 0\) but we defined the
 connection via connection coefficients so we had better check that we
@@ -420,7 +492,7 @@ lemma mercatorCov_e₂ {x : S2} (hx : x ∈ sphSource) : mercatorCov e₂ x = 0 
   ext v; simp
 #+end_src
 
-** Covariant Derivative
+* Covariant Derivative
 
 \[
 \text{For } x \in U \text{ and } v \in T_xS^2:\qquad
