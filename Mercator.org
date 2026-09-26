@@ -11,7 +11,7 @@
 #+LATEX_HEADER: \setlength{\parskip}{\medskipamount}
 #+LATEX_HEADER: \setlength{\parindent}{0pt}
 
-* Foreword
+* Preamble
 
 Some time ago I wanted to write about the Ehresmann connection, and it
 seemed to me that SageManifolds lacked the necessary
@@ -26,12 +26,27 @@ in SageManifolds using Lean and Mathlib. The exception is geodesics,
 and with them the rhumb lines, which depend on a PR that still has
 =sorry= in it; they will have to wait for a later post.
 
-In this post a connection means a [[https://en.wikipedia.org/wiki/Connection_(vector_bundle)][Koszul connection]], that is, a
+I say I wanted to write about the Ehresmann connection but not in this
+blog post; in this post I only try to reproduce in Lean what I had in
+SageManifolds and a connection means a [[https://en.wikipedia.org/wiki/Connection_(vector_bundle)][Koszul connection]], that is, a
 covariant derivative, since that is what Mathlib provides. The
 Ehresmann connection that started all this will be the subject of the
-next post, where it also explains a puzzle we meet at the end of this
-one: why connection coefficients (Christoffel symbols) are not tensors,
-and why they transform the way they do.
+next post, where it also explains the mystery of why connection
+coefficients aka Christoffel symbols are not tensors, and why they
+transform the way they do:
+
+Under a change of variable from \(\left(x^1, \ldots, x^n\right)\) to
+\(\left(\bar{x}^1, \ldots, \bar{x}^n\right)\), Christoffel symbols
+transform as
+
+\[
+\bar{\Gamma}_{k l}^i=\frac{\partial \bar{x}^i}{\partial x^m}
+\frac{\partial x^n}{\partial \bar{x}^k} \frac{\partial x^p}{\partial
+\bar{x}^l} \Gamma_{n p}^m+\frac{\partial^2 x^m}{\partial \bar{x}^k
+\partial \bar{x}^l} \frac{\partial \bar{x}^i}{\partial x^m}
+\]
+
+where the overline denotes the Christoffel symbols in the \(\bar{x}^i\) coordinate system.
 
 * Introduction
 
@@ -44,10 +59,11 @@ geometry is General Relativity, connections with torsion are given
 little if any attention.
 
 It turns out we are all very familiar with a connection with torsion:
-the Mercator projection. Some mathematical physics texts,
-e.g. [cite/t:@Nakahara2003], allude to this but leave the details to the
-reader. Moreover, this connection respects the metric induced from
-Euclidean space (in fact we will construct it so it does this).
+it is hidden in the Mercator projection. Some mathematical physics
+texts, e.g. [cite/t:@Nakahara2003], allude to this but leave the
+details to the reader. Moreover, this connection respects the metric
+induced from Euclidean space (in fact we will construct it so it does
+this).
 
 We will construct the connection by declaring the compass directions,
 due south and due east, to be parallel. Such a connection cannot exist
@@ -57,70 +73,87 @@ every meridian at once. The [[https://en.wikipedia.org/wiki/Hairy_ball_theorem][
 unavoidable: there is not even a single nowhere-vanishing vector field
 on \(S^2\), let alone a frame. The compass frame, and with it the
 connection, lives on the sphere minus the two poles; we show below
-that it cannot be extended across a pole. For convenience we will
-work on the spherical coordinate chart on \(S^2\), that is the inverse
-of the map
-\((\theta, \phi) \mapsto (\sin\theta \cos\phi, \sin\theta \sin\phi, \cos\theta)\),
-with \(\theta \in (0, \pi)\), the angle from the north pole and
-\(\phi \in (0, 2\pi)\) the longitude. In Lean we can write the inverse
-chart map as
+that it cannot be extended across a pole. We will work on the familiar
+spherical coordinate chart: \(\theta\) the angle from the North Pole
+and \(\phi\) the angle from the Meridian.
 
-[... existing Lean blocks, round metric etc. ...]
+Note: the observant reader might be wondering how we can define
+directions without first defining a connection. We do that using the
+round sphere metric.
 
-* Koszul and Ehresmann Connections
+* Koszul Connections
 
-The textbook definition asks that \(\nabla_X\sigma\) be linear over the
-smooth functions in \(X\), and additive with a Leibniz rule in
-\(\sigma\). Mathlib instead takes \((\nabla\sigma)(x)\) to be a
-continuous linear map from the tangent space at \(x\), so linearity in
-the direction is built in, and only additivity and Leibniz in
-\(\sigma\) remain as axioms. Every Mathlib connection gives a textbook
-one, by setting \((\nabla_X\sigma)(x) = (\nabla\sigma)(x)(X(x))\), and in
-finite dimensions the converse also holds: a bump-function argument
-shows that linearity over the smooth functions forces
-\((\nabla_X\sigma)(x)\) to depend only on the vector \(X(x)\).
-Mathlib's definition is the more restrictive one, and it says directly
-what a connection is for: differentiating a section at a point in the
-direction of a tangent vector.
+Most textbooks define a *Koszul connection* on a vector bundle \(E \to
+M\) to be a map \(\nabla : \mathfrak{X}(M) \times \Gamma(E) \to
+\Gamma(E)\), \((X, \sigma) \mapsto \nabla_X \sigma\), such that
 
-The pointwise form is also, to me at any rate, the more intuitive one.
-Given a curve \(\gamma\) and a vector field \(V\) defined on an open
-set containing it,
+it is \(C^\infty(M)\)-linear in \(X\):
+
 \[
-\nabla_{\gamma'(t)} V = (\nabla V)(\gamma(t))\big(\gamma'(t)\big)
+\nabla_{fX + Y}\sigma = f\,\nabla_X\sigma + \nabla_Y\sigma
 \]
-is the covariant derivative of \(V\) at the point \(\gamma(t)\) in the
-direction in which the curve is moving: a vector field, a point and a
-direction, and nothing else. The textbook form, by contrast, requires
-the direction to be a whole vector field \(X\), even though only its
-value at the point matters. We say \(V\) is /parallel/ along
-\(\gamma\) if this derivative is zero at every point of the curve: as
-we move along \(\gamma\), \(V\) does not change, in the sense that the
-connection defines. Only the values of \(V\) on the curve matter, and
-given a starting vector \(v\) at \(\gamma(0)\) there is exactly one
-parallel \(V\) along \(\gamma\) with \(V(0) = v\) (by the existence
-and uniqueness of solutions to linear ODEs); its values are the
-/parallel translates/ of \(v\).
 
-This is also where the Ehresmann picture comes in. A point of the
-/frame bundle/ is a point of the manifold together with a basis of the
-tangent space there. Some directions in the frame bundle are there
-without any connection: keeping the point fixed and changing only the
-frame. These are the /vertical/ directions. What a connection adds is
-a choice of complementary /horizontal/ directions: ways of moving the
-point while carrying the frame along, which is what connects one fibre
-to its neighbours.
+it is additive in \(\sigma\):
+
+\[\nabla_X(\sigma + \tau) = \nabla_X\sigma + \nabla_X\tau\]
+
+and it satisfies Leibniz in \(\sigma\):
+
+\[\nabla_X(f\sigma) = (Xf)\,\sigma + f\,\nabla_X\sigma\]
+
+The *Mathlib connection* is a map \(\nabla : \Gamma(E) \to
+\Gamma(\mathrm{Hom}(TM, E))\), \(\sigma \mapsto (x \mapsto
+(\nabla\sigma)(x))\). That is, Mathlib assigns to each section
+\(\sigma\) and point \(x\) a continuous linear map \((\nabla\sigma)(x) :
+T_xM \to E_x\) such that,
+
+for sections differentiable at \(x\):
+\[\nabla(\sigma + \tau)(x) = \nabla\sigma(x) + \nabla\tau(x)\]
+
+\[\nabla(g\sigma)(x) = g(x)\,\nabla\sigma(x) + dg_x \otimes \sigma(x)\]
+
+where
+
+\[(dg_x \otimes \sigma(x))(v) = dg_x(v)\,\sigma(x)\]
+
+Every Mathlib connection gives a textbook one, by setting
+\((\nabla_X\sigma)(x) = (\nabla\sigma)(x)(X(x))\). In finite dimensions
+the converse also holds: a bump-function argument shows that linearity
+over the smooth functions forces \((\nabla_X\sigma)(x)\) to depend only
+on the vector \(X(x)\), linearly, and that linear map is
+\((\nabla\sigma)(x)\). Mathlib's definition is the more restrictive
+one, and it says directly what a connection is for: differentiating a
+section at a point in the direction of a tangent vector.
+
+Given a curve \(\gamma\) and a vector field \(V\) defined on an open
+set containing it, then if at every point of the curve:
+
+\[
+(\nabla V)(\gamma(t))\big(\gamma'(t)\big) = 0
+\]
+
+we say \(V\) is *parallel* along \(\gamma\): as we move along \(\gamma\), \(V\) does
+not change, in the sense that the connection defines. Only the values
+of \(V\) on the curve matter, and given a starting vector \(v\) at
+\(\gamma(0)\) there is exactly one parallel \(V\) along \(\gamma\) with
+\(V(0) = v\) (by the existence and uniqueness of solutions to linear
+ODEs); its values are the *parallel translates* of \(v\).
 
 A curve of frames is horizontal if its vectors are parallel along the
-underlying curve, in the sense just described: loosely, the frame is
-carried along without turning. But what counts as "turning" is exactly
-what the connection decides. For the Mercator connection, not turning
-means keeping the same compass bearing, so a frame carried along a
-circle of latitude does not turn. For the Levi-Civita connection, not
-turning means not rotating about the normal to the sphere. This is
-what the swing of a Foucault pendulum does, and by that standard it is
-the compass directions on the ground that turn, which is why the
-pendulum appears to precess.
+underlying curve: loosely, the frame is carried along without turning.
+But what counts as "turning" is exactly what the connection decides.
+For the Mercator connection, not turning means keeping the same
+compass bearing, so a frame carried along a circle of latitude does
+not turn. For the Levi-Civita connection, not turning means not
+rotating about the normal to the sphere. This is what the swing of a
+Foucault pendulum does, and by that standard it is the compass
+directions on the ground that turn, which is why the pendulum appears
+to precess. More on this in a future blog.
+
+* The Chart and the Round Metric
+
+The domain of the chart is the sphere with both poles and one
+half-meridian removed:
 
 #+begin_src lean4 :eval no-export :results output :exports results
 import MercatorConnection.MercatorGeom
@@ -129,6 +162,10 @@ import MercatorConnection.MercatorGeom
 
 #+RESULTS:
 : sphSource = {p | 0 < (↑p).ofLp 0 ∨ (↑p).ofLp 1 ≠ 0} : Prop
+
+that is, we remove the points with \(x \le 0\) and \(y = 0\): the
+meridian at longitude \(\pi\), together with the poles. The inverse of
+the chart is
 
 #+begin_src lean4 :eval no-export :results output :exports results
 import MercatorConnection.MercatorGeom
@@ -141,28 +178,27 @@ import MercatorConnection.MercatorGeom
 :   (WithLp.equiv 2 (Fin 3 → ℝ)).symm
 :     ![Real.sin (q.ofLp 0) * Real.cos (q.ofLp 1), Real.sin (q.ofLp 0) * Real.sin (q.ofLp 1), Real.cos (q.ofLp 0)]
 
-If \(\psi\) is the chart map then
-
-\[\psi^{-1}(\theta, \phi)=(\sin \theta \cos \phi, \sin \theta \sin \phi, \cos \theta)\]
-
-and
-
-\[\psi=(\theta, \phi): S^2 \rightarrow \mathbb{R}^2, \quad \theta:=\pi^1 \circ \psi, \quad \phi:=\pi^2 \circ \psi\]
-
-NB this is just a chart not the Mercator projection; we will soon define that.
-
-First suppose we have the round metric on the sphere:
-
+If \(\psi : U \to \mathbb{R}^2\) is the chart map, where \(U\) is the
+domain above, then
 \[
-g = d\theta^2 + \sin^2\theta \, d\phi^2,
-\qquad (\theta, \phi) \in (0, \pi) \times (0, 2\pi)
+\psi^{-1}(\theta, \phi) = (\sin\theta\cos\phi,\ \sin\theta\sin\phi,\ \cos\theta),
 \]
+with \(\theta \in (0, \pi)\) the angle from the north pole and
+\(\phi \in (-\pi, \pi)\) the longitude, and we write
+\(\theta := \pi^1 \circ \psi\) and \(\phi := \pi^2 \circ \psi\) for the
+coordinate functions. NB this is just a chart, not the Mercator
+projection.
 
-We know if we use the Levi-Civita connection then there are no
-parallel lines as great circles will always intersect at two points.
-Instead let us change what parallel means: two tangent vectors are
-parallel if they have the same compass bearing, that is, they make the same
-angle with a line of longitude.
+The round metric, the one induced from \(\mathbb{R}^3\), is
+\[
+g = d\theta^2 + \sin^2\theta \, d\phi^2 .
+\]
+With the Levi-Civita connection of this metric the straight lines,
+that is the geodesics, are great circles, and any two great circles
+meet (twice): there are no parallel lines in Euclid's sense. Instead
+let us change what parallel means: two tangent vectors, at different
+points, are parallel if they have the same compass bearing, that is,
+if they make the same angle with the meridians through their points.
 
 As an aside, specifying this metric in SageManifolds takes 2 lines:
 
@@ -171,7 +207,8 @@ As an aside, specifying this metric in SageManifolds takes 2 lines:
  g[1,1], g[2,2] = 1, (sin(th))^2
 #+end_src
 
-On the other hand in Lean, this takes 300--400 lines as Lean demands that the purported metric really is metric:
+On the other hand in Lean, this takes 300--400 lines, as Lean demands
+that the purported metric really is a metric:
 
 #+begin_src lean4 :eval no-export :results output :exports results
 import MercatorConnection.RoundMetric
@@ -184,11 +221,11 @@ import MercatorConnection.RoundMetric
 :     TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin 2))) x →L[ℝ] ℝ :=
 : fun x => (dθ ↑x).smulRight (dθ ↑x) + Real.sin (θ_coord ↑x) ^ 2 • (dφ ↑x).smulRight (dφ ↑x)
 
-The difference is of course that in SageManifolds, we are not required to
-prove anything but in Mathlib we have to prove everything:that the
-coframe expression is positive definite, that a positive-definite
+The difference is of course that in SageManifolds we are not required
+to prove anything, but in Mathlib we have to prove everything: that
+the coframe expression is positive definite, that a positive-definite
 form's unit ball is bounded, that a section of the bundle of bilinear
-forms is smooth, that the inclusion of an open submanifold has the
+forms is smooth, and that the inclusion of an open submanifold has the
 identity as its differential. Further details [[https://github.com/idontgetoutmuch/mercator-connection/blob/main/MercatorConnection/RoundMetric.lean][here]].
 
 * The Compass Frame
@@ -265,7 +302,7 @@ the north pole) and the angle of a bearing to a meridian is
 
 so we should take that as one component of our frame \(e_1 =
 \partial_\theta\) and then we are forced by the metric to choose \(e_2
-= (1 / \sin{\theta})\partial_\phi\).
+v= (1 / \sin{\theta})\partial_\phi\).
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
 def e₁ : Π x : S2, TangentSpace (𝓡 2) x := Xθ
