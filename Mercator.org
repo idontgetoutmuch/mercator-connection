@@ -5,13 +5,14 @@
 #+bibliography: DiffGeom.bib
 #+cite_export: csl
 #+OPTIONS: toc:nil num:nil
-#+OPTIONS: :eval never-export
 #+PROPERTY: header-args:lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean :comments no :dir /Users/dom/mercator-connection
-#+PROPERTY: header-args:lean4 :dir /Users/dom/mercator-connection :eval never-export
+#+PROPERTY: header-args:lean4+ :dir /Users/dom/mercator-connection :eval never-export
 #+LATEX_HEADER: \setlength{\parskip}{\medskipamount}
 #+LATEX_HEADER: \setlength{\parindent}{0pt}
 
 * Preamble
+
+FIXME: Link for Mathlib and Lean
 
 Some time ago I wanted to write about the Ehresmann connection, and it
 seemed to me that SageManifolds lacked the necessary
@@ -41,8 +42,8 @@ transform as
 
 \[
 \bar{\Gamma}_{k l}^i=\frac{\partial \bar{x}^i}{\partial x^m}
-\frac{\partial x^n}{\partial \bar{x}^k} \frac{\partial x^p}{\partial
-\bar{x}^l} \Gamma_{n p}^m+\frac{\partial^2 x^m}{\partial \bar{x}^k
+\frac{\partial x^q}{\partial \bar{x}^k} \frac{\partial x^p}{\partial
+\bar{x}^l} \Gamma_{q p}^m+\frac{\partial^2 x^m}{\partial \bar{x}^k
 \partial \bar{x}^l} \frac{\partial \bar{x}^i}{\partial x^m}
 \]
 
@@ -71,17 +72,27 @@ on the entire sphere: at the poles the compass directions make no
 sense, since due south at the North Pole would have to point down
 every meridian at once. The [[https://en.wikipedia.org/wiki/Hairy_ball_theorem][hairy ball theorem]] says this is
 unavoidable: there is not even a single nowhere-vanishing vector field
-on \(S^2\), let alone a frame. The compass frame, and with it the
+on \(S^2\), let alone a frame (a set of vector fields which form a basis of the
+tangent space at each point). The compass frame, and with it the
 connection, lives on the sphere minus the two poles; we show below
 that it cannot be extended across a pole. We will work on the familiar
 spherical coordinate chart: \(\theta\) the angle from the North Pole
-and \(\phi\) the angle from the Meridian.
+and \(\phi\) the longitude, measured from the prime meridian.
 
 Note: the observant reader might be wondering how we can define
 directions without first defining a connection. We do that using the
 round sphere metric.
 
 * Koszul Connections
+
+A connection allows us to say what a straight line is: a curve which
+never changes direction, so that its velocity is parallel to
+itself. On the sphere with the usual round (Levi-Civita) connection
+the straight lines are great circles; for the connection in this post
+they are the curves of constant compass bearing, the so-called rhumb
+lines, which appear as straight lines on a Mercator map.
+
+FIXME: Add links for both definitions.
 
 Most textbooks define a *Koszul connection* on a vector bundle \(E \to
 M\) to be a map \(\nabla : \mathfrak{X}(M) \times \Gamma(E) \to
@@ -101,13 +112,15 @@ and it satisfies Leibniz in \(\sigma\):
 
 \[\nabla_X(f\sigma) = (Xf)\,\sigma + f\,\nabla_X\sigma\]
 
-The *Mathlib connection* is a map \(\nabla : \Gamma(E) \to
+The *[[https://leanprover-community.github.io/mathlib4_docs/Mathlib/Geometry/Manifold/VectorBundle/CovariantDerivative/Basic.html#IsCovariantDerivativeOn][Mathlib connection]]*
+is a map \(\nabla : \Gamma(E) \to
 \Gamma(\mathrm{Hom}(TM, E))\), \(\sigma \mapsto (x \mapsto
-(\nabla\sigma)(x))\). That is, Mathlib assigns to each section
+(\nabla\sigma)(x))\), where here \(\Gamma\) means all sections, not
+only smooth ones. That is, Mathlib assigns to each section
 \(\sigma\) and point \(x\) a continuous linear map \((\nabla\sigma)(x) :
 T_xM \to E_x\) such that,
-
-for sections differentiable at \(x\):
+for points \(x\) of a given set \(s\), and sections \(\sigma, \tau\)
+and functions \(g\) differentiable at \(x\):
 \[\nabla(\sigma + \tau)(x) = \nabla\sigma(x) + \nabla\tau(x)\]
 
 \[\nabla(g\sigma)(x) = g(x)\,\nabla\sigma(x) + dg_x \otimes \sigma(x)\]
@@ -139,8 +152,28 @@ of \(V\) on the curve matter, and given a starting vector \(v\) at
 \(V(0) = v\) (by the existence and uniqueness of solutions to linear
 ODEs); its values are the *parallel translates* of \(v\).
 
-A curve of frames is horizontal if its vectors are parallel along the
-underlying curve: loosely, the frame is carried along without turning.
+For the flat connection \(\nabla_{\gamma'}\gamma'\) is just the ordinary second derivative, i.e. the acceleration.
+Take a circle of radius \(r\) traversed at unit speed:
+\[
+\gamma(t) = r\big(\cos(t/r),\ \sin(t/r)\big), \qquad
+\gamma'(t) = \big(-\sin(t/r),\ \cos(t/r)\big),
+\]
+\[\nabla_{\gamma'}\gamma' = \gamma''(t) = -\frac{1}{r}\big(\cos(t/r),\ \sin(t/r)\big).\]
+This vector points to the centre and has length \(1/r\), which is the curvature of the circle. It is never zero, because the circle keeps changing direction, so it isn't a straight line. As \(r \to \infty\) it tends to \(0\), matching the circle flattening out into a line.
+
+In our (finite dimensional) setting, recall that a /frame/ on an open
+set \(U\) is a collection of vector fields \(e_1, \ldots, e_n\) on
+\(U\) which form a basis of the tangent space \(T_xM\) at each point
+\(x\) of \(U\). Every frame comes with a dual /coframe/: covector
+fields \(\varepsilon^1, \ldots, \varepsilon^n\) with
+\(\varepsilon^i(e_j) = \delta^i_j\), so that any tangent vector can be
+written \(v = \sum_i \varepsilon^i(v)\, e_i\). The coordinate vector
+fields of a chart give a frame on the chart's domain; the compass
+frame is another.
+
+A frame is carried in parallel along a curve if each of its vectors is
+parallel along the curve: loosely, the frame is carried along without
+turning
 But what counts as "turning" is exactly what the connection decides.
 For the Mercator connection, not turning means keeping the same
 compass bearing, so a frame carried along a circle of latitude does
@@ -155,13 +188,22 @@ to precess. More on this in a future blog.
 The domain of the chart is the sphere with both poles and one
 half-meridian removed:
 
+#+RESULTS:
+: def sphTarget : Set (EuclideanSpace ℝ (Fin 2)) :=
+: {q | q.ofLp 0 ∈ Set.Ioo 0 Real.pi ∧ q.ofLp 1 ∈ Set.Ioo (-Real.pi) Real.pi}
+: def sphFwd : ↑S2 → EuclideanSpace ℝ (Fin 2) :=
+: fun p =>
+:   (WithLp.equiv 2 (Fin 2 → ℝ)).symm
+:     ![Real.arccos ((↑p).ofLp 2), (Complex.equivRealProd.symm ((↑p).ofLp 0, (↑p).ofLp 1)).arg]
+
 #+begin_src lean4 :eval no-export :results output :exports results
 import MercatorConnection.MercatorGeom
-#check sphSource = {p | 0 < p.val 0 ∨ p.val 1 ≠ 0}
+#print sphSource
 #+end_src
 
 #+RESULTS:
-: sphSource = {p | 0 < (↑p).ofLp 0 ∨ (↑p).ofLp 1 ≠ 0} : Prop
+: def sphSource : Set ↑S2 :=
+: {p | 0 < (↑p).ofLp 0 ∨ (↑p).ofLp 1 ≠ 0}
 
 that is, we remove the points with \(x \le 0\) and \(y = 0\): the
 meridian at longitude \(\pi\), together with the poles. The inverse of
@@ -244,7 +286,8 @@ noncomputable section
 variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
 #+end_src
 
-#+begin_src lean4 :eval yes :results output :exports results :wrap example
+#+begin_src lean4 :eval no :results output :exports results :wrap example
+-- #+begin_src lean4 :eval yes :results output :exports results :wrap example
 import MercatorConnection.MercatorGeom
 #print θ_coord
 #print φ_coord
@@ -258,14 +301,15 @@ def φ_coord : ↑S2 → ℝ :=
 fun x => (↑sphericalChart x).ofLp 1
 #+end_example
 
-\[\left.\partial_\theta\right|_p f:=\left.\frac{\partial(f \circ \psi^{-1})}{\partial x^1}\right|_{\psi(p)} \underset{(1)}{=} d(f \circ \psi^{-1})_{\psi(p)}\left(e_1\right) \underset{(3)}{=} d f_p\left(d \psi^{-1}_{\psi(p)}\left(e_1\right)\right) \underset{(4)}{=}\left(d \psi^{-1}_{\psi(p)}\left(e_1\right)\right) f\]
+\[\left.\partial_\theta\right|_p f \triangleq \left.\frac{\partial(f \circ \psi^{-1})}{\partial x^1}\right|_{\psi(p)} \underset{(1)}{=} d(f \circ \psi^{-1})_{\psi(p)}\left(e_1\right) \underset{(3)}{=} d f_p\left(d \psi^{-1}_{\psi(p)}\left(e_1\right)\right) \underset{(4)}{\triangleq}\left(d \psi^{-1}_{\psi(p)}\left(e_1\right)\right) f\]
 
 by differentiation in \(\mathbb{R}^2\), the chain rule, definition of a tangent vector on a function and
 and as this holds for all \(f\), the two vectors are equal.
 
 Thus in Lean we can write the charte vector fields (and while we are about it their corresponding covectors) as:
 
-#+begin_src lean4 :eval yes :results output :exports results
+#+begin_src lean4 :eval no :results output :exports results :wrap example
+-- #+begin_src lean4 :eval yes :results output :exports results
 import MercatorConnection.MercatorGeom
 #print Xθ
 #print Xφ
@@ -293,16 +337,22 @@ the metric at a point is an inner product \(g_x\) on the tangent space
 {\sqrt{g_x(v,v)}\sqrt{g_x(w,w)}}.
 \]
 
-A bearing south is \(\partial\theta\) (since since θ is the angle from
-the north pole) and the angle of a bearing to a meridian is
+A bearing south is \(\partial_\theta\) (since \(\theta\) is the angle
+from the North Pole) and the angle \(\angle_x(\partial_\theta, v)\) of
+a vector \(v\) to the meridian is its bearing, measured from south, with
 
 \[
-\cos\angle_x(\partial\theta,v)
+\cos\angle_x(\partial_\theta,v) = \frac{g_x(\partial_\theta, v)}{\sqrt{g_x(v,v)}},
 \]
 
-so we should take that as one component of our frame \(e_1 =
-\partial_\theta\) and then we are forced by the metric to choose \(e_2
-v= (1 / \sin{\theta})\partial_\phi\).
+so we should take that as the first vector of our frame,
+\(e_1 = \partial_\theta\), which is a unit vector since
+\(g(\partial_\theta, \partial_\theta) = 1\). If the frame is to be
+orthonormal, the metric then forces \(e_2\) up to sign: since
+\(g(\partial_\theta, \partial_\phi) = 0\) and
+\(g(\partial_\phi, \partial_\phi) = \sin^2\theta\), we must have
+\(e_2 = \pm(1/\sin\theta)\,\partial_\phi\), and we choose the plus
+sign, which points due east.
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
 def e₁ : Π x : S2, TangentSpace (𝓡 2) x := Xθ
@@ -318,69 +368,71 @@ def ε₂ : Π x : S2, TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
 
 * Connections from Coefficients in a Frame
 
-Now we can define two vectors to be parallel if their angles to a
-given meridian are the same. For this to be true we must have a
-connection $\nabla$ with $\nabla e_1 = \nabla e_2 = 0$.
+The key idea is this: two vectors should be parallel exactly when
+they have the same components in the compass frame, that is, the same
+bearing and the same length. A vector field of length \(\ell\) and
+bearing \(\alpha\), measured from south, is
+\[
+V = \ell(\cos\alpha\, e_1 + \sin\alpha\, e_2),
+\]
+with \(\ell\) and \(\alpha\) constant, and we want every such field to
+be parallel along every curve \(\gamma\). Since its components are
+constant, the Leibniz rule gives
+
+\[
+(\nabla V)(\gamma(t))(\gamma'(t))
+= \ell\big(\cos\alpha\, (\nabla e_1)(\gamma(t))(\gamma'(t)) + \sin\alpha\, (\nabla e_2)(\gamma(t))(\gamma'(t))\big)
+\]
+
+and for this to vanish for every bearing we need
+\(\nabla e_1 = \nabla e_2 = 0\).
 
 In SageManifolds we can just say =nabla.add_coef(e)= to specify a
-covariant derivative by its connection coefficients =Γ= relative to a
-frame =e= with dual coframe =ε=, supported on a set =s=. Well the
-coframe and the valid set do not need to specified: in SageManifolds, =e= is a structure which
+covariant derivative by its connection coefficients \(\Gamma\) relative to a
+frame \(e\) with dual coframe \(\varepsilon\), supported on a set \(s\). Well the
+coframe and the valid set do not need to specified: in SageManifolds, \(e\) is a structure which
 includes the domain and the coframe is determined by the frame. NB the connection coefficients are
 all set to the default 0 in =nabla.add_coef(e)=.
 
 No such help is available in Mathlib but we can construct a connection via its coefficients ourselves.
 
-Let \(\nabla\) be any [[https://en.wikipedia.org/wiki/Connection_(vector_bundle)][Koszul connection]] thus Leibniz in the second argument:
-
-\[\nabla_v(f\sigma) = (df|_x(v))\,\sigma(x) + f(x)\,\nabla_v\sigma\]
-
-Let \(e_i\) be a frame with corresponing coframe \(\varepsilon^i\) on some open set \(S\), and
-define the connection coefficients by
-
+Let \(\nabla\) be a connection in the sense of Mathlib, as above. Its
+Leibniz rule, applied to a tangent vector \(v \in T_xM\), reads
 \[
-\nabla_{e_j} e_k = \Gamma^i_{jk}\, e_i
+(\nabla(f\sigma))(x)(v) = df_x(v)\,\sigma(x) + f(x)\,\big((\nabla\sigma)(x)(v)\big)
 \]
 
-Now take any section \(\sigma\) (think vector field) and expand it in the frame:
-
+Given a frame \(e_1, \ldots, e_n\) on \(U\) with coframe
+\(\varepsilon^1, \ldots, \varepsilon^n\), define the connection
+coefficients \(\Gamma^i_{jk}\), functions on \(U\), by
 \[
-\sigma = \sum_k \varepsilon^k(\sigma)\, e_k
+(\nabla e_k)(x)\big(e_j(x)\big) \triangleq \sum_i \Gamma^i_{jk}(x)\, e_i(x).
+\]
+Write the components of a section \(\sigma\) as functions
+\(\sigma^k := \varepsilon^k(\sigma)\), that is
+\(\sigma^k(y) = \varepsilon^k_y(\sigma(y))\), so that
+\(\sigma = \sum_k \sigma^k e_k\), and, for \(x \in U\) and
+\(v \in T_xM\), the components of \(v\) as numbers
+\(v^j := \varepsilon^j_x(v)\), so that \(v = \sum_j v^j e_j(x)\).
+
+Additivity and then the Leibniz rule give
+\[
+(\nabla\sigma)(x)(v) = \sum_k (\nabla(\sigma^k e_k))(x)(v)
+= \sum_k \Big( d\sigma^k_x(v)\, e_k(x) + \sigma^k(x)\, (\nabla e_k)(x)(v) \Big),
+\]
+and linearity of \((\nabla e_k)(x)\) gives
+\[
+(\nabla e_k)(x)(v) = \sum_j v^j\, (\nabla e_k)(x)\big(e_j(x)\big)
+= \sum_{i,j} \Gamma^i_{jk}(x)\, v^j\, e_i(x).
+\]
+Substituting and relabelling,
+\[
+(\nabla\sigma)(x)(v) = \sum_i \Big( d\sigma^i_x(v) + \sum_{j,k} \Gamma^i_{jk}(x)\, \sigma^k(x)\, v^j \Big)\, e_i(x).
 \]
 
-For \(v \in T_xM\), additivity and then the Leibniz
-rule give
-
-\[
-\nabla_v \sigma =
-\sum_k  \nabla_v\big(\varepsilon^k(\sigma)\, e_k\big) =
-\sum_k d(\varepsilon^k(\sigma))\big|_x(v)\, e_k(x) +
-\varepsilon^k(\sigma)(x)\, \nabla_v e_k
-\]
-
-Writing
-\(v = \sum_j \varepsilon^j_x(v)\, e_j(x)\):
-
-\[
-\nabla_v e_k
-= \sum_j \varepsilon^j_x(v)\, \nabla_{e_j} e_k
-= \sum_{i,j} \varepsilon^j_x(v)\, \Gamma^i_{jk}(x)\, e_i(x).
-\]
-
-Defining \((\nabla\sigma)(x)(v) \triangleq \nabla_v\sigma\), so that
-\(\nabla\sigma\) is a section of \(\operatorname{End}(TM)\) whose
-value at each \(x\) is the linear map \(v \mapsto \nabla_v\sigma\),
-substituting back and relabelling gives
-
-\[
-(\nabla\sigma)(x)(v) =
-\sum_i \Big( d(\varepsilon^i(\sigma))\big|_x(v) +
-\sum_{j,k} \Gamma^i_{jk}(x)\, \varepsilon^k(\sigma)(x)\, \varepsilon^j_x(v) \Big)\, e_i(x)
-\]
-
-Conversely, any smooth choice of \(\Gamma^i_{jk}\) makes this formula a
-Koszul connection: additivity is immediate and the Leibniz rule is a
-one-line check; so on \(S\), connections correspond exactly to the connection
+Conversely, any choice of functions $\Gamma^i_{jk}$ on $S$ makes this formula a
+connection in Mathlib's sense: additivity is immediate and the Leibniz rule is a
+one-line check; so on $S$, connections correspond exactly to the connection
 coefficients relative to the frame.
 
 We can write this definition for the specific case of \(S^2\) in Lean as:
@@ -412,14 +464,20 @@ lemma covDerivOfFrame_apply (hx : x ∈ s) (v : TangentSpace (𝓡 2) x) :
 
 And now we can write the Mercator connection with respect to this frame:
 
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-def mercatorCov :
-    (Π x : S2, TangentSpace (𝓡 2) x) →
-    (Π x : S2, TangentSpace (𝓡 2) x →L[ℝ] TangentSpace (𝓡 2) x) :=
-  covDerivOfFrame sphSource ![e₁, e₂] ![ε₁, ε₂] 0
+#+begin_src lean4 :eval yes :results output :exports results
+import MercatorConnection.MercatorGeom
+set_option pp.numericTypes true in
+#print mercatorCov
 #+end_src
 
-where interestingly =0 : Fin 2 → Fin 2 → Fin 2 → S2 → ℝ=.
+#+RESULTS:
+: def mercatorCov : ((x : ↑S2) → TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin (2 : ℕ)))) x) →
+:   (x : ↑S2) →
+:     TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin (2 : ℕ)))) x →L[ℝ]
+:       TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin (2 : ℕ)))) x :=
+: covDerivOfFrame sphSource ![e₁, e₂] ![ε₁, ε₂] (0 : Fin (2 : ℕ) → Fin (2 : ℕ) → Fin (2 : ℕ) → ↑S2 → ℝ)
+
+where we have forced Lean to give an explicit type to the final parameter =0=.
 
 * Bearings are Parallel
 
@@ -434,7 +492,8 @@ d\theta(X_\theta) = d\phi(X_\phi) = 1, \qquad d\theta(X_\phi) = d\phi(X_\theta) 
 i.e. \(\{d\theta, d\phi\}\) is the coframe dual to \(\{X_\theta, X_\phi\}\):
 \(\varepsilon^i(e_j) = \delta^i_j\) which Lean confirms:
 
-#+begin_src lean4 :eval yes :results output :exports results
+#+begin_src lean4 :eval no :results output :exports results :wrap example
+-- #+begin_src lean4 :eval yes :results output :exports results
 import MercatorConnection.MercatorGeom
 #check @dθ_Xθ
 #check @dφ_Xθ
@@ -504,6 +563,11 @@ lemma mercatorCov_apply (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
     Matrix.cons_val_zero, Matrix.cons_val_one,
     Pi.zero_apply, zero_mul, zero_smul, Finset.sum_const_zero, add_zero]
 #+end_src
+
+Mathlib has no tensor products of this kind; instead the pure tensor
+\(c \otimes w\) of a covector and a vector is represented by the linear
+map \(v \mapsto c(v)\,w\), =ContinuousLinearMap.smulRight c w=. We
+introduce \(\otimes\) as notation for it.
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
 lemma mercatorCov_e₁ {x : S2} (hx : x ∈ sphSource) : mercatorCov e₁ x = 0 := by
@@ -732,6 +796,11 @@ theorem mercatorCov_coord' (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
       = covDerivOfFrame sphSource ![Xθ, Xφ] ![dθ, dφ] Γmercator σ x :=
   mercatorCov_coord σ hx hσ
 #+end_src
+
+FIXME: When we get to the end of the post, the closing section should
+connect to this formula. The frame version with $A$ becomes this one
+when $A$ is the Jacobian, and the $e_m(A)$ term is what produces the
+second derivatives.
 
 Why did the compass frame's zero coefficients turn into cot θ in the coordinate frame?
 Because connection coefficients are not the components of a tensor: under a change of frame \(e^\prime_i = A^j_i e_j​\) they transform inhomogeneously,
