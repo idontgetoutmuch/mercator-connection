@@ -719,4 +719,40 @@ lemma ε₂_e₂ {y : S2} (hy : y ∈ sphSource) : ε₂ y (e₂ y) = 1 := by
   simp only [ε₂, e₂, smul_apply, map_smul, smul_eq_mul, dφ_Xφ hy, mul_one]
   field_simp
 
+lemma mvfderiv_of_eventuallyEq_const {f : S2 → ℝ} {c : ℝ} {x : S2}
+    (h : f =ᶠ[nhds x] fun _ ↦ c) :
+    mvfderiv (𝓡 2) f x = 0 := by
+  have h1 : mvfderiv (𝓡 2) f x = mvfderiv (𝓡 2) (fun _ : S2 ↦ c) x := h.mfderiv_eq
+  rw [h1]
+  exact mfderiv_const
+
+local infixr:70 " ⊗ " => fun c w => ContinuousLinearMap.smulRight c w
+
+lemma mercatorCov_apply (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
+    (hx : x ∈ sphSource) :
+    mercatorCov σ x =
+      (mvfderiv (𝓡 2) (fun y ↦ ε₁ y (σ y)) x) ⊗ (e₁ x) +
+      (mvfderiv (𝓡 2) (fun y ↦ ε₂ y (σ y)) x) ⊗ (e₂ x) := by
+  simp only [mercatorCov, covDerivOfFrame, if_pos hx, Fin.sum_univ_two,
+    Matrix.cons_val_zero, Matrix.cons_val_one,
+    Pi.zero_apply, zero_mul, zero_smul, Finset.sum_const_zero, add_zero]
+
+lemma mercatorCov_e₁ {x : S2} (hx : x ∈ sphSource) : mercatorCov e₁ x = 0 := by
+  rw [mercatorCov_apply _ hx]
+  have hmem := IsOpen.mem_nhds sph_open_source hx
+  rw [mvfderiv_of_eventuallyEq_const
+        (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₁_e₁ hy),
+      mvfderiv_of_eventuallyEq_const
+        (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₂_e₁ hy)]
+  ext v; simp
+
+lemma mercatorCov_e₂ {x : S2} (hx : x ∈ sphSource) : mercatorCov e₂ x = 0 := by
+  rw [mercatorCov_apply _ hx]
+  have hmem := IsOpen.mem_nhds sph_open_source hx
+  rw [mvfderiv_of_eventuallyEq_const
+        (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₁_e₂ hy),
+      mvfderiv_of_eventuallyEq_const
+        (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₂_e₂ hy)]
+  ext v; simp
+
 end

@@ -514,7 +514,6 @@ since they differ from the coordinate ones only by the reciprocal factors
 \(e_2 = (1/\sin\theta)\,X_\phi\) and \(\varepsilon^2 = \sin\theta\,d\phi\).
 
 #+begin_src lean4 :eval no :results output :exports results :wrap example
--- #+begin_src lean4 :eval yes :results output :exports results
 import MercatorConnection.MercatorGeom
 #check ε₁_e₁
 #check ε₂_e₁
@@ -588,56 +587,32 @@ end Orthonormal
 #+begin_example
 #+end_example
 
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-lemma mvfderiv_of_eventuallyEq_const {f : S2 → ℝ} {c : ℝ} {x : S2}
-    (h : f =ᶠ[nhds x] fun _ ↦ c) :
-    mvfderiv (𝓡 2) f x = 0 := by
-  have h1 : mvfderiv (𝓡 2) f x = mvfderiv (𝓡 2) (fun _ : S2 ↦ c) x := h.mfderiv_eq
-  rw [h1]
-  exact mfderiv_const
+* Covariant Derivative
 
-local infixr:70 " ⊗ " => fun c w => ContinuousLinearMap.smulRight c w
+First let us note:
 
-lemma mercatorCov_apply (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
-    (hx : x ∈ sphSource) :
-    mercatorCov σ x =
-      (mvfderiv (𝓡 2) (fun y ↦ ε₁ y (σ y)) x) ⊗ (e₁ x) +
-      (mvfderiv (𝓡 2) (fun y ↦ ε₂ y (σ y)) x) ⊗ (e₂ x) := by
-  simp only [mercatorCov, covDerivOfFrame, if_pos hx, Fin.sum_univ_two,
-    Matrix.cons_val_zero, Matrix.cons_val_one,
-    Pi.zero_apply, zero_mul, zero_smul, Finset.sum_const_zero, add_zero]
+#+begin_src lean4 :eval yes :results output :exports results :wrap example
+import MercatorConnection.MercatorGeom
+#check mercatorCov_e₁
 #+end_src
 
-Mathlib has no tensor products of this kind; instead the pure tensor
-\(c \otimes w\) of a covector and a vector is represented by the linear
-map \(v \mapsto c(v)\,w\), =ContinuousLinearMap.smulRight c w=. We
-introduce \(\otimes\) as notation for it.
-
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-lemma mercatorCov_e₁ {x : S2} (hx : x ∈ sphSource) : mercatorCov e₁ x = 0 := by
-  rw [mercatorCov_apply _ hx]
-  have hmem := IsOpen.mem_nhds sph_open_source hx
-  rw [mvfderiv_of_eventuallyEq_const
-        (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₁_e₁ hy),
-      mvfderiv_of_eventuallyEq_const
-        (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₂_e₁ hy)]
-  ext v; simp
-#+end_src
+#+RESULTS:
+#+begin_example
+mercatorCov_e₁ {x : ↑S2} (hx : x ∈ sphSource) : mercatorCov e₁ x = 0
+#+end_example
 
 and
 
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-lemma mercatorCov_e₂ {x : S2} (hx : x ∈ sphSource) : mercatorCov e₂ x = 0 := by
-  rw [mercatorCov_apply _ hx]
-  have hmem := IsOpen.mem_nhds sph_open_source hx
-  rw [mvfderiv_of_eventuallyEq_const
-        (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₁_e₂ hy),
-      mvfderiv_of_eventuallyEq_const
-        (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₂_e₂ hy)]
-  ext v; simp
+#+begin_src lean4 :eval yes :results output :exports results :wrap example
+import MercatorConnection.MercatorGeom
+#check mercatorCov_e₂
 #+end_src
 
-* Covariant Derivative
+#+RESULTS:
+#+begin_example
+mercatorCov_e₂ {x : ↑S2} (hx : x ∈ sphSource) : mercatorCov e₂ x = 0
+#+end_example
+
 
 \[
 \text{For } x \in U \text{ and } v \in T_xS^2:\qquad
