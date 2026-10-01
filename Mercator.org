@@ -477,7 +477,8 @@ set_option pp.numericTypes true in
 :       TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin (2 : ℕ)))) x :=
 : covDerivOfFrame sphSource ![e₁, e₂] ![ε₁, ε₂] (0 : Fin (2 : ℕ) → Fin (2 : ℕ) → Fin (2 : ℕ) → ↑S2 → ℝ)
 
-where we have forced Lean to give an explicit type to the final parameter =0=.
+where we have forced Lean to give an explicit type to the final
+parameter =0= (and in fact to all numeric types).
 
 * Bearings are Parallel
 
@@ -512,22 +513,20 @@ The compass frame and coframe inherit the same duality, \(\varepsilon^i(e_j) = \
 since they differ from the coordinate ones only by the reciprocal factors
 \(e_2 = (1/\sin\theta)\,X_\phi\) and \(\varepsilon^2 = \sin\theta\,d\phi\).
 
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-lemma ε₁_e₁ {y : S2} (hy : y ∈ sphSource) : ε₁ y (e₁ y) = 1 :=
-	dθ_Xθ hy
-
-lemma ε₂_e₁ {y : S2} (hy : y ∈ sphSource) : ε₂ y (e₁ y) = 0 := by
-	simp only [ε₂, e₁, smul_apply, smul_eq_mul, dφ_Xθ hy, mul_zero]
-
-lemma ε₁_e₂ {y : S2} (hy : y ∈ sphSource) : ε₁ y (e₂ y) = 0 := by
-	simp only [ε₁, e₂, map_smul, smul_eq_mul, dθ_Xφ hy, mul_zero]
-
-lemma ε₂_e₂ {y : S2} (hy : y ∈ sphSource) : ε₂ y (e₂ y) = 1 := by
-	have hs : Real.sin (θ_coord y) ≠ 0 :=
-	  sinθ_ne_zero y (sphSource_subset_S2_open hy)
-	simp only [ε₂, e₂, smul_apply, map_smul, smul_eq_mul, dφ_Xφ hy, mul_one]
-	field_simp
+#+begin_src lean4 :eval no :results output :exports results :wrap example
+-- #+begin_src lean4 :eval yes :results output :exports results
+import MercatorConnection.MercatorGeom
+#check ε₁_e₁
+#check ε₂_e₁
+#check ε₁_e₂
+#check ε₂_e₂
 #+end_src
+
+#+RESULTS:
+: ε₁_e₁ {y : ↑S2} (hy : y ∈ sphSource) : (ε₁ y) (e₁ y) = 1
+: ε₂_e₁ {y : ↑S2} (hy : y ∈ sphSource) : (ε₂ y) (e₁ y) = 0
+: ε₁_e₂ {y : ↑S2} (hy : y ∈ sphSource) : (ε₁ y) (e₂ y) = 0
+: ε₂_e₂ {y : ↑S2} (hy : y ∈ sphSource) : (ε₂ y) (e₂ y) = 1
 
 Duality is not orthonormality: that is a statement about the metric, not about
 pairing covectors with vectors. Feeding the coordinate frame into
@@ -542,7 +541,52 @@ meridians converge. Rescaling by exactly that factor cures it: with
 \[
 g(e_1, e_1) = g(e_2, e_2) = 1, \qquad g(e_1, e_2) = 0,
 \]
-so \(\{e_1, e_2\}\) is orthonormal.
+so \(\{e_1, e_2\}\) is orthonormal. We can confirm this in Lean:
+
+#+begin_src lean4 :eval yes :results silent :exports code
+import MercatorConnection.MercatorGeom
+import MercatorConnection.RoundMetric
+
+section Orthonormal
+
+variable (x : sphSourceOpens)
+
+lemma g_Xθ_Xθ : roundInner x (Xθ x) (Xθ x) = 1 := by
+  have hx : (x : S2) ∈ sphSource := x.2
+  rw [roundInner_apply]
+  simp [dθ_Xθ hx, dφ_Xθ hx]
+
+lemma g_Xφ_Xφ : roundInner x (Xφ x) (Xφ x) = Real.sin (θ_coord x) ^ 2 := by
+  have hx : (x : S2) ∈ sphSource := x.2
+  rw [roundInner_apply]
+  simp [dθ_Xφ hx, dφ_Xφ hx]
+
+lemma g_Xθ_Xφ : roundInner x (Xθ x) (Xφ x) = 0 := by
+  have hx : (x : S2) ∈ sphSource := x.2
+  rw [roundInner_apply]
+  simp [dθ_Xθ hx, dφ_Xθ hx, dθ_Xφ hx]
+
+lemma g_e₁_e₁ : roundInner x (e₁ x) (e₁ x) = 1 := g_Xθ_Xθ x
+
+lemma g_e₁_e₂ : roundInner x (e₁ x) (e₂ x) = 0 := by
+  have hx : (x : S2) ∈ sphSource := x.2
+  rw [roundInner_apply]
+  simp [e₁, e₂, map_smul, dθ_Xθ hx, dφ_Xθ hx, dθ_Xφ hx]
+
+lemma g_e₂_e₂ : roundInner x (e₂ x) (e₂ x) = 1 := by
+  have hx : (x : S2) ∈ sphSource := x.2
+  have hs : Real.sin (θ_coord x) ≠ 0 :=
+    sinθ_ne_zero x (sphSource_subset_S2_open hx)
+  rw [roundInner_apply]
+  simp [e₂, map_smul, dθ_Xφ hx, dφ_Xφ hx]
+  field_simp
+
+end Orthonormal
+#+end_src
+
+#+RESULTS:
+#+begin_example
+#+end_example
 
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
 lemma mvfderiv_of_eventuallyEq_const {f : S2 → ℝ} {c : ℝ} {x : S2}

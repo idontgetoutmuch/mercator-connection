@@ -699,9 +699,24 @@ lemma frame_pairing11 {x : S2} (hx : x ∈ sphSource) : dφ x (Xφ x) = 1 := by
 
 /-! ## The duality lemmas quoted in the post -/
 
-lemma dθ_Xθ {x : S2} (hx : x ∈ sphSource) : dθ x (Xθ x) = 1 := frame_pairing00 hx
-lemma dφ_Xθ {x : S2} (hx : x ∈ sphSource) : dφ x (Xθ x) = 0 := frame_pairing10 hx
-lemma dθ_Xφ {x : S2} (hx : x ∈ sphSource) : dθ x (Xφ x) = 0 := frame_pairing01 hx
-lemma dφ_Xφ {x : S2} (hx : x ∈ sphSource) : dφ x (Xφ x) = 1 := frame_pairing11 hx
+private lemma dθ_Xθ {x : S2} (hx : x ∈ sphSource) : dθ x (Xθ x) = 1 := frame_pairing00 hx
+private lemma dφ_Xθ {x : S2} (hx : x ∈ sphSource) : dφ x (Xθ x) = 0 := frame_pairing10 hx
+private lemma dθ_Xφ {x : S2} (hx : x ∈ sphSource) : dθ x (Xφ x) = 0 := frame_pairing01 hx
+private lemma dφ_Xφ {x : S2} (hx : x ∈ sphSource) : dφ x (Xφ x) = 1 := frame_pairing11 hx
+
+lemma ε₁_e₁ {y : S2} (hy : y ∈ sphSource) : ε₁ y (e₁ y) = 1 :=
+  dθ_Xθ hy
+
+lemma ε₂_e₁ {y : S2} (hy : y ∈ sphSource) : ε₂ y (e₁ y) = 0 := by
+  simp only [ε₂, e₁, smul_apply, smul_eq_mul, dφ_Xθ hy, mul_zero]
+
+lemma ε₁_e₂ {y : S2} (hy : y ∈ sphSource) : ε₁ y (e₂ y) = 0 := by
+  simp only [ε₁, e₂, map_smul, smul_eq_mul, dθ_Xφ hy, mul_zero]
+
+lemma ε₂_e₂ {y : S2} (hy : y ∈ sphSource) : ε₂ y (e₂ y) = 1 := by
+  have hs : Real.sin (θ_coord y) ≠ 0 :=
+    sinθ_ne_zero y (sphSource_subset_S2_open hy)
+  simp only [ε₂, e₂, smul_apply, map_smul, smul_eq_mul, dφ_Xφ hy, mul_one]
+  field_simp
 
 end
