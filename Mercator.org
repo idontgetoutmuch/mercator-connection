@@ -14,40 +14,28 @@
 
 FIXME: Link for Mathlib and Lean
 
-Some time ago I wanted to write about the Ehresmann connection, and it
-seemed to me that SageManifolds lacked the necessary
+Some time ago I wanted to write about the [[https://en.wikipedia.org/wiki/Ehresmann_connection][Ehresmann connection]], and it
+seemed to me that [[https://sagemanifolds.obspm.fr][SageManifolds]] lacked the necessary
 scaffolding. Given that my Python skills are rudimentary, I looked for
 something where I could write the scaffolding myself if need be, and
-alighted on Mathlib. A question about whether I could recreate my
-earlier blog post on connections with torsion in Mathlib got an
-encouraging response and thus began my Lean journey. That response
-now looks extremely optimistic: even today some of the scaffolding
-does not exist. Be that as it may, I have recast most of what I wrote
-in SageManifolds using Lean and Mathlib. The exception is geodesics,
-and with them the rhumb lines, which depend on a PR that still has
-=sorry= in it; they will have to wait for a later post.
+alighted on Mathlib as it was written in the functional language [[https://lean-lang.org][Lean]]
+and I have programmed in functional languages for many years. A
+question about whether I could recreate my earlier [[https://idontgetoutmuch.wordpress.com/2016/11/24/mercator-a-connection-with-torsion/][blog post]] on
+connections with torsion in Mathlib got an encouraging response and
+thus began my Lean journey. That response now looks extremely
+optimistic: even today some of the scaffolding does not exist. Be that
+as it may, I have recast most of what I wrote in SageManifolds using
+Lean and Mathlib. The exception is geodesics, and with them the rhumb
+lines, which depend on a PR that still has =sorry= in it; they will
+have to wait for a later post.
 
 I say I wanted to write about the Ehresmann connection but not in this
 blog post; in this post I only try to reproduce in Lean what I had in
 SageManifolds and a connection means a [[https://en.wikipedia.org/wiki/Connection_(vector_bundle)][Koszul connection]], that is, a
 covariant derivative, since that is what Mathlib provides. The
 Ehresmann connection that started all this will be the subject of the
-next post, where it also explains the mystery of why connection
-coefficients aka Christoffel symbols are not tensors, and why they
-transform the way they do:
-
-Under a change of variable from \(\left(x^1, \ldots, x^n\right)\) to
-\(\left(\bar{x}^1, \ldots, \bar{x}^n\right)\), Christoffel symbols
-transform as
-
-\[
-\bar{\Gamma}_{k l}^i=\frac{\partial \bar{x}^i}{\partial x^m}
-\frac{\partial x^q}{\partial \bar{x}^k} \frac{\partial x^p}{\partial
-\bar{x}^l} \Gamma_{q p}^m+\frac{\partial^2 x^m}{\partial \bar{x}^k
-\partial \bar{x}^l} \frac{\partial \bar{x}^i}{\partial x^m}
-\]
-
-where the overline denotes the Christoffel symbols in the \(\bar{x}^i\) coordinate system.
+next post where I hope to also explain the mystery of why connection
+coefficients aka Christoffel symbols are not tensors.
 
 * Introduction
 
@@ -72,12 +60,15 @@ on the entire sphere: at the poles the compass directions make no
 sense, since due south at the North Pole would have to point down
 every meridian at once. The [[https://en.wikipedia.org/wiki/Hairy_ball_theorem][hairy ball theorem]] says this is
 unavoidable: there is not even a single nowhere-vanishing vector field
-on \(S^2\), let alone a frame (a set of vector fields which form a basis of the
-tangent space at each point). The compass frame, and with it the
-connection, lives on the sphere minus the two poles; we show below
-that it cannot be extended across a pole. We will work on the familiar
+on \(S^2\), let alone a frame (a set of vector fields which form a
+basis of the tangent space at each point). The compass frame, and with
+it the connection, lives on the sphere minus the two poles but for
+convenience we restrict it a bit further. We will work on the familiar
 spherical coordinate chart: \(\theta\) the angle from the North Pole
-and \(\phi\) the longitude, measured from the prime meridian.
+and \(\phi\) the longitude, measured from the prime
+meridian. Furthermore it will turn out that this connection no
+curvature (another reason it could not be extended to the whole
+sphere.
 
 Note: the observant reader might be wondering how we can define
 directions without first defining a connection. We do that using the
@@ -111,6 +102,13 @@ it is additive in \(\sigma\):
 and it satisfies Leibniz in \(\sigma\):
 
 \[\nabla_X(f\sigma) = (Xf)\,\sigma + f\,\nabla_X\sigma\]
+
+FIXME: Note that Mathlib curries on the section rather than on the direction:
+\(\nabla\sigma\) is the partial application, not \(\nabla_X\). This is
+the right choice for a pointwise definition, since \(\nabla\sigma\) is
+linear over functions in the direction and so is a genuine section of
+\(\mathrm{Hom}(TM, E)\), whereas \(\nabla_X\) obeys a Leibniz rule in
+\(\sigma\) and is a differential operator.
 
 The *[[https://leanprover-community.github.io/mathlib4_docs/Mathlib/Geometry/Manifold/VectorBundle/CovariantDerivative/Basic.html#IsCovariantDerivativeOn][Mathlib connection]]*
 is a map \(\nabla : \Gamma(E) \to
@@ -272,8 +270,6 @@ identity as its differential. Further details [[https://github.com/idontgetoutmu
 
 * The Compass Frame
 
-For our chart map \(\psi : S^2 \rightarrow \mathbb{R}^2 \), we have
-
 #+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean :exports none
 import Mathlib
 import MercatorConnection.MercatorGeom
@@ -285,6 +281,8 @@ noncomputable section
 
 variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
 #+end_src
+
+For our chart map \(\psi : S^2 \rightarrow \mathbb{R}^2 \), we have
 
 #+begin_src lean4 :eval no :results output :exports results :wrap example
 -- #+begin_src lean4 :eval yes :results output :exports results :wrap example
@@ -301,12 +299,24 @@ def φ_coord : ↑S2 → ℝ :=
 fun x => (↑sphericalChart x).ofLp 1
 #+end_example
 
-\[\left.\partial_\theta\right|_p f \triangleq \left.\frac{\partial(f \circ \psi^{-1})}{\partial x^1}\right|_{\psi(p)} \underset{(1)}{=} d(f \circ \psi^{-1})_{\psi(p)}\left(e_1\right) \underset{(3)}{=} d f_p\left(d \psi^{-1}_{\psi(p)}\left(e_1\right)\right) \underset{(4)}{\triangleq}\left(d \psi^{-1}_{\psi(p)}\left(e_1\right)\right) f\]
+The coordinate vector field \(\partial_\theta\) at \(p\) is the image
+of the first standard basis vector \(u_1\) of \(\mathbb{R}^2\) under
+the derivative of \(\psi^{-1}\): \[ \left.\partial_\theta\right|_p f
+\triangleq \left.\frac{\partial(f \circ \psi^{-1})}{\partial
+x^1}\right|_{\psi(p)} \underset{(1)}{=} d(f \circ
+\psi^{-1})_{\psi(p)}(u_1) \underset{(2)}{=}
+df_p\big(d\psi^{-1}_{\psi(p)}(u_1)\big) \underset{(3)}{\triangleq}
+\big(d\psi^{-1}_{\psi(p)}(u_1)\big) f \] by (1) differentiation in
+\(\mathbb{R}^2\), (2) the chain rule and (3) the definition of a
+tangent vector acting on a function. As this holds for all \(f\):
 
-by differentiation in \(\mathbb{R}^2\), the chain rule, definition of a tangent vector on a function and
-and as this holds for all \(f\), the two vectors are equal.
+\[\left.\partial_\theta\right|_p = d\psi^{-1}_{\psi(p)}(u_1)\]
 
-Thus in Lean we can write the charte vector fields (and while we are about it their corresponding covectors) as:
+and
+similarly \(\partial_\phi\) with \(u_2\).
+
+Thus in Lean we can write the chart vector fields (and while we are
+about it their corresponding covectors) as:
 
 #+begin_src lean4 :eval no :results output :exports results :wrap example
 -- #+begin_src lean4 :eval yes :results output :exports results
@@ -365,6 +375,85 @@ abbrev ε₁ : Π x : S2, TangentSpace (𝓡 2) x →L[ℝ] ℝ := dθ
 def ε₂ : Π x : S2, TangentSpace (𝓡 2) x →L[ℝ] ℝ :=
   fun x ↦ Real.sin (θ_coord x) • dφ x
 #+end_src
+
+Let us check that these really are a frame and its coframe. First the
+coordinate frame: the duality relations
+\[
+d\theta(X_\theta) = d\phi(X_\phi) = 1, \qquad d\theta(X_\phi) = d\phi(X_\theta) = 0,
+\]
+say that \(\{d\theta, d\phi\}\) is the coframe dual to
+\(\{X_\theta, X_\phi\}\), which Lean confirms:
+
+#+begin_src lean4 :eval no :results output :exports results :wrap example
+-- #+begin_src lean4 :eval yes :results output :exports results
+import MercatorConnection.MercatorGeom
+#check @dθ_Xθ
+#check @dφ_Xθ
+#check @dθ_Xφ
+#check @dφ_Xφ
+#+end_src
+
+#+RESULTS:
+: @dθ_Xθ : ∀ {x : ↑S2}, x ∈ sphSource → (dθ x) (Xθ x) = 1
+: @dφ_Xθ : ∀ {x : ↑S2}, x ∈ sphSource → (dφ x) (Xθ x) = 0
+: @dθ_Xφ : ∀ {x : ↑S2}, x ∈ sphSource → (dθ x) (Xφ x) = 0
+: @dφ_Xφ : ∀ {x : ↑S2}, x ∈ sphSource → (dφ x) (Xφ x) = 1
+
+This is pure duality, a covector applied to a vector, and uses no metric.
+The compass frame and coframe inherit the same duality, \(\varepsilon^i(e_j) = \delta^i_j\),
+since they differ from the coordinate ones only by the reciprocal factors
+\(e_2 = (1/\sin\theta)\,X_\phi\) and \(\varepsilon^2 = \sin\theta\,d\phi\).
+
+#+begin_src lean4 :eval no :results output :exports results :wrap example
+import MercatorConnection.MercatorGeom
+#check ε₁_e₁
+#check ε₂_e₁
+#check ε₁_e₂
+#check ε₂_e₂
+#+end_src
+
+#+RESULTS:
+: ε₁_e₁ {y : ↑S2} (hy : y ∈ sphSource) : (ε₁ y) (e₁ y) = 1
+: ε₂_e₁ {y : ↑S2} (hy : y ∈ sphSource) : (ε₂ y) (e₁ y) = 0
+: ε₁_e₂ {y : ↑S2} (hy : y ∈ sphSource) : (ε₁ y) (e₂ y) = 0
+: ε₂_e₂ {y : ↑S2} (hy : y ∈ sphSource) : (ε₂ y) (e₂ y) = 1
+
+Duality is not orthonormality: that is a statement about the metric, not about
+pairing covectors with vectors. Feeding the coordinate frame into
+\(g = d\theta^2 + \sin^2\theta\,d\phi^2\) gives
+\[
+g(X_\theta, X_\theta) = 1, \qquad g(X_\phi, X_\phi) = \sin^2\theta, \qquad g(X_\theta, X_\phi) = 0,
+\]
+so \(\{X_\theta, X_\phi\}\) is orthogonal but *not* orthonormal: the longitude
+vector \(X_\phi\) has length \(\sin\theta\), shrinking to zero at the poles as the
+meridians converge. Rescaling by exactly that factor cures it: with
+\(e_1 = X_\theta\) and \(e_2 = (1/\sin\theta)\,X_\phi\),
+\[
+g(e_1, e_1) = g(e_2, e_2) = 1, \qquad g(e_1, e_2) = 0,
+\]
+so \(\{e_1, e_2\}\) is orthonormal. We can confirm this in Lean:
+
+#+begin_src lean4 :eval yes :results output :exports results :wrap example
+import MercatorConnection.Orthonormal
+
+#check g_Xθ_Xθ
+#check g_Xφ_Xφ
+#check g_Xθ_Xφ
+#check g_e₁_e₁
+#check g_e₁_e₂
+#check g_e₂_e₂
+
+#+end_src
+
+#+RESULTS:
+#+begin_example
+g_Xθ_Xθ (x : ↥sphSourceOpens) : ((roundInner x) (Xθ ↑x)) (Xθ ↑x) = 1
+g_Xφ_Xφ (x : ↥sphSourceOpens) : ((roundInner x) (Xφ ↑x)) (Xφ ↑x) = Real.sin (θ_coord ↑x) ^ 2
+g_Xθ_Xφ (x : ↥sphSourceOpens) : ((roundInner x) (Xθ ↑x)) (Xφ ↑x) = 0
+g_e₁_e₁ (x : ↥sphSourceOpens) : ((roundInner x) (e₁ ↑x)) (e₁ ↑x) = 1
+g_e₁_e₂ (x : ↥sphSourceOpens) : ((roundInner x) (e₁ ↑x)) (e₂ ↑x) = 0
+g_e₂_e₂ (x : ↥sphSourceOpens) : ((roundInner x) (e₂ ↑x)) (e₂ ↑x) = 1
+#+end_example
 
 * Connections from Coefficients in a Frame
 
@@ -480,361 +569,124 @@ set_option pp.numericTypes true in
 where we have forced Lean to give an explicit type to the final
 parameter =0= (and in fact to all numeric types).
 
+* =mercatorCov= is a Connection
+
+In SageManifolds, [[https://doc.sagemath.org/html/en/reference/manifolds/sage/manifolds/differentiable/affine_connection.html#sage.manifolds.differentiable.affine_connection.AffineConnection][=add_coef=]] gives us a connection by construction. In
+Mathlib we must prove that =mercatorCov= satisfies
+=IsCovariantDerivativeOn=. We need to prove additivity and Leibniz:
+
+#+begin_src lean4 :eval yes :results output :exports results :wrap example
+import MercatorConnection.MercatorGeom
+#check @mercatorCov_add
+#check @mercatorCov_leibniz
+#+end_src
+
+#+RESULTS:
+#+begin_example
+@mercatorCov_add : ∀ {σ σ' : (y : ↑S2) → TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin 2))) y} {x : ↑S2},
+  MDiffAt (T% σ) x → MDiffAt (T% σ') x → x ∈ sphSource → mercatorCov (σ + σ') x = mercatorCov σ x + mercatorCov σ' x
+@mercatorCov_leibniz : ∀ {σ : (y : ↑S2) → TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin 2))) y}
+  {g : ↑S2 → ℝ} {x : ↑S2},
+  MDiffAt (T% σ) x →
+    MDiffAt g x → x ∈ sphSource → mercatorCov (g • σ) x = g x • mercatorCov σ x + (d% g x).smulRight (σ x)
+#+end_example
+
+#+begin_src lean4 :eval yes :results output :exports results :wrap example
+import MercatorConnection.MercatorGeom
+#check @mercatorCov_isCovariantDerivativeOn
+#+end_src
+
+#+RESULTS:
+#+begin_example
+mercatorCov_isCovariantDerivativeOn : IsCovariantDerivativeOn (EuclideanSpace ℝ (Fin 2)) mercatorCov sphSource
+#+end_example
+
 * Bearings are Parallel
 
-We wanted \(\nabla e_1 = 0\) and \(\nabla e_2 = 0\) but we defined the
-connection via connection coefficients so we had better check that we
-get what we want.
-
-First let us check the duality relations
-\[
-d\theta(X_\theta) = d\phi(X_\phi) = 1, \qquad d\theta(X_\phi) = d\phi(X_\theta) = 0,
-\]
-i.e. \(\{d\theta, d\phi\}\) is the coframe dual to \(\{X_\theta, X_\phi\}\):
-\(\varepsilon^i(e_j) = \delta^i_j\) which Lean confirms:
-
-#+begin_src lean4 :eval no :results output :exports results :wrap example
--- #+begin_src lean4 :eval yes :results output :exports results
-import MercatorConnection.MercatorGeom
-#check @dθ_Xθ
-#check @dφ_Xθ
-#check @dθ_Xφ
-#check @dφ_Xφ
-#+end_src
-
-#+RESULTS:
-: @dθ_Xθ : ∀ {x : ↑S2}, x ∈ sphSource → (dθ x) (Xθ x) = 1
-: @dφ_Xθ : ∀ {x : ↑S2}, x ∈ sphSource → (dφ x) (Xθ x) = 0
-: @dθ_Xφ : ∀ {x : ↑S2}, x ∈ sphSource → (dθ x) (Xφ x) = 0
-: @dφ_Xφ : ∀ {x : ↑S2}, x ∈ sphSource → (dφ x) (Xφ x) = 1
-
-This is pure duality, a covector applied to a vector, and uses no metric.
-The compass frame and coframe inherit the same duality, \(\varepsilon^i(e_j) = \delta^i_j\),
-since they differ from the coordinate ones only by the reciprocal factors
-\(e_2 = (1/\sin\theta)\,X_\phi\) and \(\varepsilon^2 = \sin\theta\,d\phi\).
-
-#+begin_src lean4 :eval no :results output :exports results :wrap example
-import MercatorConnection.MercatorGeom
-#check ε₁_e₁
-#check ε₂_e₁
-#check ε₁_e₂
-#check ε₂_e₂
-#+end_src
-
-#+RESULTS:
-: ε₁_e₁ {y : ↑S2} (hy : y ∈ sphSource) : (ε₁ y) (e₁ y) = 1
-: ε₂_e₁ {y : ↑S2} (hy : y ∈ sphSource) : (ε₂ y) (e₁ y) = 0
-: ε₁_e₂ {y : ↑S2} (hy : y ∈ sphSource) : (ε₁ y) (e₂ y) = 0
-: ε₂_e₂ {y : ↑S2} (hy : y ∈ sphSource) : (ε₂ y) (e₂ y) = 1
-
-Duality is not orthonormality: that is a statement about the metric, not about
-pairing covectors with vectors. Feeding the coordinate frame into
-\(g = d\theta^2 + \sin^2\theta\,d\phi^2\) gives
-\[
-g(X_\theta, X_\theta) = 1, \qquad g(X_\phi, X_\phi) = \sin^2\theta, \qquad g(X_\theta, X_\phi) = 0,
-\]
-so \(\{X_\theta, X_\phi\}\) is orthogonal but *not* orthonormal: the longitude
-vector \(X_\phi\) has length \(\sin\theta\), shrinking to zero at the poles as the
-meridians converge. Rescaling by exactly that factor cures it: with
-\(e_1 = X_\theta\) and \(e_2 = (1/\sin\theta)\,X_\phi\),
-\[
-g(e_1, e_1) = g(e_2, e_2) = 1, \qquad g(e_1, e_2) = 0,
-\]
-so \(\{e_1, e_2\}\) is orthonormal. We can confirm this in Lean:
-
-#+begin_src lean4 :eval yes :results silent :exports code
-import MercatorConnection.MercatorGeom
-import MercatorConnection.RoundMetric
-
-section Orthonormal
-
-variable (x : sphSourceOpens)
-
-lemma g_Xθ_Xθ : roundInner x (Xθ x) (Xθ x) = 1 := by
-  have hx : (x : S2) ∈ sphSource := x.2
-  rw [roundInner_apply]
-  simp [dθ_Xθ hx, dφ_Xθ hx]
-
-lemma g_Xφ_Xφ : roundInner x (Xφ x) (Xφ x) = Real.sin (θ_coord x) ^ 2 := by
-  have hx : (x : S2) ∈ sphSource := x.2
-  rw [roundInner_apply]
-  simp [dθ_Xφ hx, dφ_Xφ hx]
-
-lemma g_Xθ_Xφ : roundInner x (Xθ x) (Xφ x) = 0 := by
-  have hx : (x : S2) ∈ sphSource := x.2
-  rw [roundInner_apply]
-  simp [dθ_Xθ hx, dφ_Xθ hx, dθ_Xφ hx]
-
-lemma g_e₁_e₁ : roundInner x (e₁ x) (e₁ x) = 1 := g_Xθ_Xθ x
-
-lemma g_e₁_e₂ : roundInner x (e₁ x) (e₂ x) = 0 := by
-  have hx : (x : S2) ∈ sphSource := x.2
-  rw [roundInner_apply]
-  simp [e₁, e₂, map_smul, dθ_Xθ hx, dφ_Xθ hx, dθ_Xφ hx]
-
-lemma g_e₂_e₂ : roundInner x (e₂ x) (e₂ x) = 1 := by
-  have hx : (x : S2) ∈ sphSource := x.2
-  have hs : Real.sin (θ_coord x) ≠ 0 :=
-    sinθ_ne_zero x (sphSource_subset_S2_open hx)
-  rw [roundInner_apply]
-  simp [e₂, map_smul, dθ_Xφ hx, dφ_Xφ hx]
-  field_simp
-
-end Orthonormal
-#+end_src
-
-#+RESULTS:
-#+begin_example
-#+end_example
-
-* Covariant Derivative
-
-First let us note:
+Now that we know =mercatorCov= is a connection, we can check that it
+does what we built it for: we wanted \(\nabla e_1 = 0\) and
+\(\nabla e_2 = 0\), but we defined the connection via connection
+coefficients, so we had better check that we get what we want.
 
 #+begin_src lean4 :eval yes :results output :exports results :wrap example
 import MercatorConnection.MercatorGeom
-#check mercatorCov_e₁
+#check @mercatorCov_e₁
+#check @mercatorCov_e₂
 #+end_src
 
 #+RESULTS:
 #+begin_example
-mercatorCov_e₁ {x : ↑S2} (hx : x ∈ sphSource) : mercatorCov e₁ x = 0
+@mercatorCov_e₁ : ∀ {x : ↑S2}, x ∈ sphSource → mercatorCov e₁ x = 0
+@mercatorCov_e₂ : ∀ {x : ↑S2}, x ∈ sphSource → mercatorCov e₂ x = 0
 #+end_example
 
-and
+* The Coordinate Expression
+
+In the compass frame all the coefficients of =mercatorCov= are zero.
+In the coordinate frame \(\{\partial_\theta, \partial_\phi\}\) they
+are not: there is exactly one nonzero coefficient,
+\(\Gamma^\phi_{\theta\phi} = \cot\theta\), which is what
+SageManifolds displayed. (SageManifolds writes it as
+\(\Gamma^\phi_{\phi\theta}\): its convention is
+\(\nabla_{e_j} e_i = \Gamma^k_{ij}\, e_k\), with the direction index
+last, whereas ours puts it first. It is the same coefficient.)
+
+The coefficients in the coordinate frame, as an array:
 
 #+begin_src lean4 :eval yes :results output :exports results :wrap example
 import MercatorConnection.MercatorGeom
-#check mercatorCov_e₂
+#print cotθ
+#print Γmercator
 #+end_src
 
 #+RESULTS:
 #+begin_example
-mercatorCov_e₂ {x : ↑S2} (hx : x ∈ sphSource) : mercatorCov e₂ x = 0
+def cotθ : ↑S2 → ℝ :=
+fun x => Real.cos (θ_coord x) / Real.sin (θ_coord x)
+def Γmercator : Fin 2 → Fin 2 → Fin 2 → ↑S2 → ℝ :=
+fun i j k x => if i = 1 ∧ j = 0 ∧ k = 1 then cotθ x else 0
 #+end_example
 
+And we can check that this really does give the same frame independent
+covariant derivative as the one in the compass frame: Expanding
+=mercatorCov= in the coordinate frame:
 
-\[
-\text{For } x \in U \text{ and } v \in T_xS^2:\qquad
-v = \varepsilon^1(v)\, e_1 + \varepsilon^2(v)\, e_2
-\]
-
-\[
-v = \varepsilon^1_x(v)\, e_1(x) + \varepsilon^2_x(v)\, e_2(x)
-\qquad \text{for all } x \in U,\ v \in T_x S^2
-\]
-
-\[
-v =
-d\theta(v)\,\partial_\theta + \big(\sin\theta\, d\varphi(v)\big)\,\frac{1}{\sin\theta}\,\partial_\varphi
-\]
-
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-lemma compass_dual {x : S2} (hx : x ∈ sphSource) (v : TangentSpace (𝓡 2) x) :
-    v = ε₁ x v • e₁ x + ε₂ x v • e₂ x := by
-  have hs : Real.sin (θ_coord x) ≠ 0 :=
-    sinθ_ne_zero x (sphSource_subset_S2_open hx)
-  have h := frame_dual hx v
-  simp only [ε₁, ε₂, e₁, e₂, smul_apply, smul_eq_mul, smul_smul]
-  rw [mul_comm (Real.sin (θ_coord x)) (dφ x v), mul_inv_cancel_right₀ hs]
-  exact h.symm
+#+begin_src lean4 :eval yes :results output :exports results :wrap example
+import MercatorConnection.MercatorGeom
+#check @mercatorCov_coord'
 #+end_src
 
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-lemma mdiffAt_dθcomp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
-    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
-      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
-    (hx : x ∈ S2_open) :
-    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dθ y (σ y)) x :=
-  mdifferentiableAt_mfderiv_apply θ_coord σ x ((θ_coord_contMDiffAt hx).of_le (by norm_num)) hσ
+#+RESULTS:
+#+begin_example
+mercatorCov_coord' : ∀ (σ : (y : ↑S2) → TangentSpace (modelWithCornersSelf ℝ (EuclideanSpace ℝ (Fin 2))) y) {x : ↑S2},
+  x ∈ sphSource →
+    MDiffSectionAt σ x →
+      covDerivOfFrame sphSource ![e₁, e₂] ![ε₁, ε₂] 0 σ x = covDerivOfFrame sphSource ![Xθ, Xφ] ![dθ, dφ] Γmercator σ x
+#+end_example
 
-lemma mdiffAt_dφcomp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
-    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
-      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
-    (hx : x ∈ sphSource) :
-    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dφ y (σ y)) x :=
-  mdifferentiableAt_mfderiv_apply φ_coord σ x
-    ((φ_coord_contMDiffAt hx).of_le (by decide)) hσ
-#+end_src
-
-Differentiability of the ε₁-component of a bundle-differentiable section.
-
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-lemma mdiffAt_ε₁comp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
-    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
-      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
-    (hx : x ∈ sphSource) :
-    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ ε₁ y (σ y)) x :=
-  mdiffAt_dθcomp hσ (sphSource_subset_S2_open hx)
-#+end_src
-
-Differentiability of the ε₂-component of a bundle-differentiable section.
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-lemma mdiffAt_ε₂comp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
-    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
-      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
-    (hx : x ∈ sphSource) :
-    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ ε₂ y (σ y)) x := by
-  have hxo := sphSource_subset_S2_open hx
-  have hcm : ContMDiffAt (𝓡 2) 𝓘(ℝ, ℝ) ⊤ (fun y ↦ Real.sin (θ_coord y)) x :=
-    (Real.contDiff_sin.contMDiff.contMDiffAt).comp x (θ_coord_contMDiffAt hxo)
-  have hsin : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ Real.sin (θ_coord y)) x :=
-    hcm.mdifferentiableAt (by norm_num)
-  have h := hsin.mul (mdiffAt_dφcomp hσ hx)
-  exact h.congr_of_eventuallyEq (Filter.Eventually.of_forall fun y ↦ by
-    simp only [ε₂, smul_apply, smul_eq_mul, Pi.mul_apply])
-#+end_src
-
-* Verification: the upstream `IsCovariantDerivativeOn`
-
-With all coefficients zero, both axioms are pure `mvfderiv` calculus plus
-compass duality — there is no correction term to juggle.
-
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-theorem mercatorCov_isCovariantDerivativeOn :
-    IsCovariantDerivativeOn (EuclideanSpace ℝ (Fin 2)) mercatorCov sphSource where
-  add := by
-    intro σ σ' x hσ hσ' hx
-    have hc1 : (fun y ↦ ε₁ y ((σ + σ') y)) =
-        (fun y ↦ ε₁ y (σ y)) + fun y ↦ ε₁ y (σ' y) := by
-      funext y; simp only [Pi.add_apply, map_add]
-    have hc2 : (fun y ↦ ε₂ y ((σ + σ') y)) =
-        (fun y ↦ ε₂ y (σ y)) + fun y ↦ ε₂ y (σ' y) := by
-      funext y; simp only [Pi.add_apply, map_add]
-    rw [mercatorCov_apply (σ + σ') hx, mercatorCov_apply σ hx, mercatorCov_apply σ' hx,
-      hc1, hc2,
-      mvfderiv_add (mdiffAt_ε₁comp hσ hx) (mdiffAt_ε₁comp hσ' hx),
-      mvfderiv_add (mdiffAt_ε₂comp hσ hx) (mdiffAt_ε₂comp hσ' hx)]
-    ext v
-    simp only [add_apply, ContinuousLinearMap.smulRight_apply]
-    module
-  leibniz := by
-    intro σ g x hσ hg hx
-    have hc1 : (fun y ↦ ε₁ y ((g • σ) y)) = g * fun y ↦ ε₁ y (σ y) := by
-      funext y; simp only [Pi.smul_apply', Pi.mul_apply, map_smul, smul_eq_mul]
-    have hc2 : (fun y ↦ ε₂ y ((g • σ) y)) = g * fun y ↦ ε₂ y (σ y) := by
-      funext y; simp only [Pi.smul_apply', Pi.mul_apply, map_smul, smul_eq_mul]
-    rw [mercatorCov_apply (g • σ) hx, mercatorCov_apply σ hx, hc1, hc2,
-      mvfderiv_mul hg (mdiffAt_ε₁comp hσ hx),
-      mvfderiv_mul hg (mdiffAt_ε₂comp hσ hx)]
-    set a := ε₁ x (σ x) with ha
-    set b := ε₂ x (σ x) with hb
-    have hdual : σ x = a • e₁ x + b • e₂ x := by
-      rw [ha, hb]; exact compass_dual hx (σ x)
-    rw [hdual]
-    ext v
-    simp only [add_apply, smul_apply,
-      ContinuousLinearMap.smulRight_apply, smul_eq_mul]
-    module
-#+end_src
-
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-/-! ## The coordinate expression — the classical Christoffel symbol -/
-
-/-- d(sin θ) = cos θ · dθ. -/
-theorem mvfderiv_sin_θcoord {x : S2} (hx : x ∈ S2_open) :
-    mvfderiv (𝓡 2) (fun y ↦ Real.sin (θ_coord y)) x
-      = Real.cos (θ_coord x) • dθ x := by
-  have h_chain : HasMFDerivAt (𝓡 2) 𝓘(ℝ, ℝ) θ_coord x (dθ x) :=
-    ((θ_coord_contMDiffAt hx).mdifferentiableAt (by norm_num)).hasMFDerivAt
-  have hsin : HasFDerivAt Real.sin
-      (ContinuousLinearMap.toSpanSingleton ℝ (Real.cos (θ_coord x))) (θ_coord x) :=
-    (Real.hasDerivAt_sin (θ_coord x)).hasFDerivAt
-  have hcomp : HasMFDerivAt (𝓡 2) 𝓘(ℝ, ℝ) (Real.sin ∘ θ_coord) x
-      ((ContinuousLinearMap.toSpanSingleton ℝ (Real.cos (θ_coord x))).comp (dθ x)) :=
-    HasMFDerivAt.comp x hsin.hasMFDerivAt h_chain
-  have heq : (ContinuousLinearMap.toSpanSingleton ℝ (Real.cos (θ_coord x))).comp (dθ x)
-      = Real.cos (θ_coord x) • dθ x := by
-    ext v
-    simp [ContinuousLinearMap.toSpanSingleton_apply, smul_eq_mul]
-    exact mul_comm' ((dθ x) v) (cos (θ_coord x))
-  exact heq ▸ hcomp.mfderiv
-
-/-- cot of the colatitude, the sole nonzero Christoffel coefficient. -/
-noncomputable def cotθ (x : S2) : ℝ := Real.cos (θ_coord x) / Real.sin (θ_coord x)
-
-/-- Coordinate-frame Christoffel array of the Mercator connection:
-Γ^φ_{θφ} = cot θ, all others zero. -/
-def Γmercator : Fin 2 → Fin 2 → Fin 2 → S2 → ℝ :=
-  fun i j k x => if i = 1 ∧ j = 0 ∧ k = 1 then cotθ x else 0
-
-/-- σ is differentiable at x as a section of the tangent bundle. -/
-def MDiffSectionAt (σ : Π y : S2, TangentSpace (𝓡 2) y) (x : S2) : Prop :=
-  MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
-    (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x
-
-#check  mvfderiv_mul
-
-/-
-Γ^φ_{θφ} = cot θ: the compass-frame connection, written in the coordinate
-frame, is the classical Mercator connection.
--/
-theorem mercatorCov_coord_pre (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
-    (hx : x ∈ sphSource)
-    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
-      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x) :
-    mercatorCov σ x =
-      (mvfderiv (𝓡 2) (fun y ↦ dθ y (σ y)) x) ⊗ (Xθ x) +
-      (mvfderiv (𝓡 2) (fun y ↦ dφ y (σ y)) x +
-        ((Real.cos (θ_coord x) / Real.sin (θ_coord x)) * dφ x (σ x)) • dθ x).smulRight
-        (Xφ x) := by
-  have hxo := sphSource_subset_S2_open hx
-  have hs : Real.sin (θ_coord x) ≠ 0 := sinθ_ne_zero x hxo
-  have hcm : ContMDiffAt (𝓡 2) 𝓘(ℝ, ℝ) ⊤ (fun y ↦ Real.sin (θ_coord y)) x :=
-    (Real.contDiff_sin.contMDiff.contMDiffAt).comp x (θ_coord_contMDiffAt hxo)
-  have hsin_diff : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ Real.sin (θ_coord y)) x :=
-    hcm.mdifferentiableAt (by norm_num)
-  have hφ : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dφ y (σ y)) x :=
-    mdiffAt_dφcomp hσ hx
-  have hprod : (fun y ↦ ε₂ y (σ y)) =
-      (fun y ↦ Real.sin (θ_coord y)) * fun y ↦ dφ y (σ y) := by
-    funext y
-    simp only [ε₂, smul_apply, smul_eq_mul, Pi.mul_apply]
-  rw [mercatorCov_apply σ hx, hprod, mvfderiv_mul hsin_diff hφ,
-    mvfderiv_sin_θcoord hxo]
-  ext v
-  simp only [e₁, e₂, ε₁, add_apply, ContinuousLinearMap.smulRight_apply, smul_apply, smul_eq_mul, smul_smul]
-  congr 1
-  congr 1
-  field_simp
-#+end_src
-
-#+begin_src lean4 :tangle MercatorConnection/Posts/MercatorVPostCode.lean
-theorem mercatorCov_coord (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
-    (hx : x ∈ sphSource) (hσ : MDiffSectionAt σ x) :
-    mercatorCov σ x
-      = covDerivOfFrame sphSource ![Xθ, Xφ] ![dθ, dφ] Γmercator σ x := by
-  rw [mercatorCov_coord_pre σ hx hσ]
-  simp only [covDerivOfFrame, if_pos hx, Fin.sum_univ_two,
-    Matrix.cons_val_zero, Matrix.cons_val_one, Γmercator, cotθ]
-  norm_num
-
-theorem mercatorCov_coord' (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
-    (hx : x ∈ sphSource) (hσ : MDiffSectionAt σ x) :
-    covDerivOfFrame sphSource ![e₁, e₂] ![ε₁, ε₂] 0 σ x
-      = covDerivOfFrame sphSource ![Xθ, Xφ] ![dθ, dφ] Γmercator σ x :=
-  mercatorCov_coord σ hx hσ
-#+end_src
-
-FIXME: When we get to the end of the post, the closing section should
-connect to this formula. The frame version with $A$ becomes this one
-when $A$ is the Jacobian, and the $e_m(A)$ term is what produces the
-second derivatives.
-
-Why did the compass frame's zero coefficients turn into cot θ in the coordinate frame?
-Because connection coefficients are not the components of a tensor: under a change of frame \(e^\prime_i = A^j_i e_j​\) they transform inhomogeneously,
+Under a change of frame \(e^\prime_i = A^j_i e_j​\) the connection
+coefficients transform inhomogeneously,
 
 \[
 \Gamma^\prime = A^{−1}\Gamma A + A^{−1}dA
 \]
 
-the second term being the tell-tale non-tensorial part. Here the change from the compass frame {e1,e2}\{e_1, e_2\}
-{e1​,e2​} to the coordinate frame {∂θ,∂φ}\{\partial_\theta, \partial_\varphi\}
-{∂θ​,∂φ​} has A=diag(1,sin⁡θ)A = \mathrm{diag}(1, \sin\theta)
-A=diag(1,sinθ), so with Γ=0\Gamma = 0
-Γ=0 on the compass side the entire coordinate expression comes from the inhomogeneous term: A−1dA=diag(0, cot⁡θ dθ)A^{-1}dA = \mathrm{diag}(0,\, \cot\theta\, d\theta)
-A−1dA=diag(0,cotθdθ), i.e. the single symbol Γθφφ=cot⁡θ\Gamma^\varphi_{\theta\varphi} = \cot\theta
-Γθφφ​=cotθ — exactly what mercatorCov_coord computes. I hope to make the transformation law itself, and its formalisation via the Yang–Mills transformation law on the frame bundle, the subject of a future post.
+because connection coefficients are not the components of a tensor, the second term being the
+non-tensorial part: it is the Maurer–Cartan
+form \(g^{-1}dg\) of \(GL(2)\) pulled back along \(A\).
+
+Here the change from the compass frame \(\{e_1, e_2\}\) to the
+coordinate frame \(\{\partial_\theta, \partial_\phi\}\) has
+\(A = \mathrm{diag}(1, \sin\theta)\), so with \(\Gamma = 0\) on the
+compass side the entire coordinate expression comes from the
+inhomogeneous term:
+\[
+A^{-1}dA = \mathrm{diag}(0,\, \cot\theta\, d\theta),
+\]
+i.e. the single symbol \(\Gamma^\phi_{\theta\phi} = \cot\theta\),
+exactly what =mercatorCov_coord= computes. I hope to make the
+transformation law itself, and its formalisation via the Yang–Mills
+transformation law on the frame bundle, the subject of a future post.
 
 * References
 #+print_bibliography:

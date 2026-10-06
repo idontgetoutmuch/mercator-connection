@@ -755,4 +755,170 @@ lemma mercatorCov_e₂ {x : S2} (hx : x ∈ sphSource) : mercatorCov e₂ x = 0 
         (Filter.eventuallyEq_of_mem hmem fun y hy ↦ ε₂_e₂ hy)]
   ext v; simp
 
+lemma compass_dual {x : S2} (hx : x ∈ sphSource) (v : TangentSpace (𝓡 2) x) :
+    v = ε₁ x v • e₁ x + ε₂ x v • e₂ x := by
+  have hs : Real.sin (θ_coord x) ≠ 0 :=
+    sinθ_ne_zero x (sphSource_subset_S2_open hx)
+  have h := frame_dual hx v
+  simp only [ε₁, ε₂, e₁, e₂, smul_apply, smul_eq_mul, smul_smul]
+  rw [mul_comm (Real.sin (θ_coord x)) (dφ x v), mul_inv_cancel_right₀ hs]
+  exact h.symm
+
+lemma mdiffAt_dθcomp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
+    (hx : x ∈ S2_open) :
+    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dθ y (σ y)) x :=
+  mdifferentiableAt_mfderiv_apply θ_coord σ x ((θ_coord_contMDiffAt hx).of_le (by norm_num)) hσ
+
+lemma mdiffAt_dφcomp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
+    (hx : x ∈ sphSource) :
+    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dφ y (σ y)) x :=
+  mdifferentiableAt_mfderiv_apply φ_coord σ x
+    ((φ_coord_contMDiffAt hx).of_le (by decide)) hσ
+
+lemma mdiffAt_ε₁comp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
+    (hx : x ∈ sphSource) :
+    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ ε₁ y (σ y)) x :=
+  mdiffAt_dθcomp hσ (sphSource_subset_S2_open hx)
+
+lemma mdiffAt_ε₂comp {σ : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
+    (hx : x ∈ sphSource) :
+    MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ ε₂ y (σ y)) x := by
+  have hxo := sphSource_subset_S2_open hx
+  have hcm : ContMDiffAt (𝓡 2) 𝓘(ℝ, ℝ) ⊤ (fun y ↦ Real.sin (θ_coord y)) x :=
+    (Real.contDiff_sin.contMDiff.contMDiffAt).comp x (θ_coord_contMDiffAt hxo)
+  have hsin : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ Real.sin (θ_coord y)) x :=
+    hcm.mdifferentiableAt (by norm_num)
+  have h := hsin.mul (mdiffAt_dφcomp hσ hx)
+  exact h.congr_of_eventuallyEq (Filter.Eventually.of_forall fun y ↦ by
+    simp only [ε₂, smul_apply, smul_eq_mul, Pi.mul_apply])
+
+lemma mercatorCov_add {σ σ' : Π y : S2, TangentSpace (𝓡 2) y} {x : S2}
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
+    (hσ' : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ' y)) x)
+    (hx : x ∈ sphSource) :
+    mercatorCov (σ + σ') x = mercatorCov σ x + mercatorCov σ' x := by
+  have hc1 : (fun y ↦ ε₁ y ((σ + σ') y)) =
+      (fun y ↦ ε₁ y (σ y)) + fun y ↦ ε₁ y (σ' y) := by
+    funext y; simp only [Pi.add_apply, map_add]
+  have hc2 : (fun y ↦ ε₂ y ((σ + σ') y)) =
+      (fun y ↦ ε₂ y (σ y)) + fun y ↦ ε₂ y (σ' y) := by
+    funext y; simp only [Pi.add_apply, map_add]
+  rw [mercatorCov_apply (σ + σ') hx, mercatorCov_apply σ hx, mercatorCov_apply σ' hx,
+    hc1, hc2,
+    mvfderiv_add (mdiffAt_ε₁comp hσ hx) (mdiffAt_ε₁comp hσ' hx),
+    mvfderiv_add (mdiffAt_ε₂comp hσ hx) (mdiffAt_ε₂comp hσ' hx)]
+  ext v
+  simp only [add_apply, ContinuousLinearMap.smulRight_apply]
+  module
+
+lemma mercatorCov_leibniz {σ : Π y : S2, TangentSpace (𝓡 2) y} {g : S2 → ℝ} {x : S2}
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x)
+    (hg : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) g x)
+    (hx : x ∈ sphSource) :
+    mercatorCov (g • σ) x =
+      g x • mercatorCov σ x + (mvfderiv (𝓡 2) g x).smulRight (σ x) := by
+  have hc1 : (fun y ↦ ε₁ y ((g • σ) y)) = g * fun y ↦ ε₁ y (σ y) := by
+    funext y; simp only [Pi.smul_apply', Pi.mul_apply, map_smul, smul_eq_mul]
+  have hc2 : (fun y ↦ ε₂ y ((g • σ) y)) = g * fun y ↦ ε₂ y (σ y) := by
+    funext y; simp only [Pi.smul_apply', Pi.mul_apply, map_smul, smul_eq_mul]
+  rw [mercatorCov_apply (g • σ) hx, mercatorCov_apply σ hx, hc1, hc2,
+    mvfderiv_mul hg (mdiffAt_ε₁comp hσ hx),
+    mvfderiv_mul hg (mdiffAt_ε₂comp hσ hx)]
+  set a := ε₁ x (σ x) with ha
+  set b := ε₂ x (σ x) with hb
+  have hdual : σ x = a • e₁ x + b • e₂ x := by
+    rw [ha, hb]; exact compass_dual hx (σ x)
+  rw [hdual]
+  ext v
+  simp only [add_apply, smul_apply,
+    ContinuousLinearMap.smulRight_apply, smul_eq_mul]
+  module
+
+theorem mercatorCov_isCovariantDerivativeOn :
+    IsCovariantDerivativeOn (EuclideanSpace ℝ (Fin 2)) mercatorCov sphSource where
+  add hσ hσ' hx := mercatorCov_add hσ hσ' hx
+  leibniz hσ hg hx := mercatorCov_leibniz hσ hg hx
+
+theorem mvfderiv_sin_θcoord {x : S2} (hx : x ∈ S2_open) :
+    mvfderiv (𝓡 2) (fun y ↦ Real.sin (θ_coord y)) x
+      = Real.cos (θ_coord x) • dθ x := by
+  have h_chain : HasMFDerivAt (𝓡 2) 𝓘(ℝ, ℝ) θ_coord x (dθ x) :=
+    ((θ_coord_contMDiffAt hx).mdifferentiableAt (by norm_num)).hasMFDerivAt
+  have hsin : HasFDerivAt Real.sin
+      (ContinuousLinearMap.toSpanSingleton ℝ (Real.cos (θ_coord x))) (θ_coord x) :=
+    (Real.hasDerivAt_sin (θ_coord x)).hasFDerivAt
+  have hcomp : HasMFDerivAt (𝓡 2) 𝓘(ℝ, ℝ) (Real.sin ∘ θ_coord) x
+      ((ContinuousLinearMap.toSpanSingleton ℝ (Real.cos (θ_coord x))).comp (dθ x)) :=
+    HasMFDerivAt.comp x hsin.hasMFDerivAt h_chain
+  have heq : (ContinuousLinearMap.toSpanSingleton ℝ (Real.cos (θ_coord x))).comp (dθ x)
+      = Real.cos (θ_coord x) • dθ x := by
+    ext v
+    simp [ContinuousLinearMap.toSpanSingleton_apply, smul_eq_mul]
+    exact mul_comm' ((dθ x) v) (cos (θ_coord x))
+  exact heq ▸ hcomp.mfderiv
+
+noncomputable def cotθ (x : S2) : ℝ := Real.cos (θ_coord x) / Real.sin (θ_coord x)
+
+def Γmercator : Fin 2 → Fin 2 → Fin 2 → S2 → ℝ :=
+  fun i j k x => if i = 1 ∧ j = 0 ∧ k = 1 then cotθ x else 0
+
+def MDiffSectionAt (σ : Π y : S2, TangentSpace (𝓡 2) y) (x : S2) : Prop :=
+  MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+    (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x
+
+theorem mercatorCov_coord_pre (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
+    (hx : x ∈ sphSource)
+    (hσ : MDifferentiableAt (𝓡 2) ((𝓡 2).prod 𝓘(ℝ, EuclideanSpace ℝ (Fin 2)))
+      (fun y ↦ TotalSpace.mk' (EuclideanSpace ℝ (Fin 2)) y (σ y)) x) :
+    mercatorCov σ x =
+      (mvfderiv (𝓡 2) (fun y ↦ dθ y (σ y)) x) ⊗ (Xθ x) +
+      (mvfderiv (𝓡 2) (fun y ↦ dφ y (σ y)) x +
+        ((Real.cos (θ_coord x) / Real.sin (θ_coord x)) * dφ x (σ x)) • dθ x).smulRight
+        (Xφ x) := by
+  have hxo := sphSource_subset_S2_open hx
+  have hs : Real.sin (θ_coord x) ≠ 0 := sinθ_ne_zero x hxo
+  have hcm : ContMDiffAt (𝓡 2) 𝓘(ℝ, ℝ) ⊤ (fun y ↦ Real.sin (θ_coord y)) x :=
+    (Real.contDiff_sin.contMDiff.contMDiffAt).comp x (θ_coord_contMDiffAt hxo)
+  have hsin_diff : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ Real.sin (θ_coord y)) x :=
+    hcm.mdifferentiableAt (by norm_num)
+  have hφ : MDifferentiableAt (𝓡 2) 𝓘(ℝ, ℝ) (fun y ↦ dφ y (σ y)) x :=
+    mdiffAt_dφcomp hσ hx
+  have hprod : (fun y ↦ ε₂ y (σ y)) =
+      (fun y ↦ Real.sin (θ_coord y)) * fun y ↦ dφ y (σ y) := by
+    funext y
+    simp only [ε₂, smul_apply, smul_eq_mul, Pi.mul_apply]
+  rw [mercatorCov_apply σ hx, hprod, mvfderiv_mul hsin_diff hφ,
+    mvfderiv_sin_θcoord hxo]
+  ext v
+  simp only [e₁, e₂, ε₁, add_apply, ContinuousLinearMap.smulRight_apply, smul_apply, smul_eq_mul, smul_smul]
+  congr 1
+  congr 1
+  field_simp
+
+theorem mercatorCov_coord (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
+    (hx : x ∈ sphSource) (hσ : MDiffSectionAt σ x) :
+    mercatorCov σ x
+      = covDerivOfFrame sphSource ![Xθ, Xφ] ![dθ, dφ] Γmercator σ x := by
+  rw [mercatorCov_coord_pre σ hx hσ]
+  simp only [covDerivOfFrame, if_pos hx, Fin.sum_univ_two,
+    Matrix.cons_val_zero, Matrix.cons_val_one, Γmercator, cotθ]
+  norm_num
+
+theorem mercatorCov_coord' (σ : Π y : S2, TangentSpace (𝓡 2) y) {x : S2}
+    (hx : x ∈ sphSource) (hσ : MDiffSectionAt σ x) :
+    covDerivOfFrame sphSource ![e₁, e₂] ![ε₁, ε₂] 0 σ x
+      = covDerivOfFrame sphSource ![Xθ, Xφ] ![dθ, dφ] Γmercator σ x :=
+  mercatorCov_coord σ hx hσ
+
 end
