@@ -12,8 +12,6 @@
 
 * Preamble
 
-FIXME: Link for Mathlib and Lean
-
 Some time ago I wanted to write about the [[https://en.wikipedia.org/wiki/Ehresmann_connection][Ehresmann connection]], and it
 seemed to me that [[https://sagemanifolds.obspm.fr][SageManifolds]] lacked the necessary
 scaffolding. Given that my Python skills are rudimentary, I looked for
@@ -24,7 +22,7 @@ question about whether I could recreate my earlier [[https://idontgetoutmuch.wor
 connections with torsion in Mathlib got an encouraging response and
 thus began my Lean journey. That response now looks extremely
 optimistic: even today some of the scaffolding does not exist. Be that
-as it may, I have recast most of what I wrote in SageManifolds using
+as it may, I have recast most of [[https://idontgetoutmuch.wordpress.com/2016/11/24/mercator-a-connection-with-torsion/][what I wrote in SageManifolds]] using
 Lean and Mathlib. The exception is geodesics, and with them the rhumb
 lines, which depend on a PR that still has =sorry= in it; they will
 have to wait for a later post.
@@ -36,6 +34,52 @@ covariant derivative, since that is what Mathlib provides. The
 Ehresmann connection that started all this will be the subject of the
 next post where I hope to also explain the mystery of why connection
 coefficients aka Christoffel symbols are not tensors.
+
+* A Cartographical Aside
+
+Here's a map of the world using the Mercator projection:
+
+#+begin_src python :python "sage -python" :results file graphics :file mercator_world.png :exports results :eval never-export
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import cartopy
+
+plt.figure(figsize=(8, 8))
+ax = plt.axes(projection=cartopy.crs.Mercator())
+ax.gridlines()
+ax.add_feature(cartopy.feature.LAND)
+ax.add_feature(cartopy.feature.COASTLINE)
+plt.savefig("mercator_world.png", bbox_inches="tight")
+#+end_src
+
+#+RESULTS:
+[[file:mercator_world.png]]
+
+We can see Greenland looks much broader at the North than in the
+middle. But if we use a [[https://en.wikipedia.org/wiki/Azimuthal_equidistant_projection][polar]] projection (below) then we see this is
+not the case. Why then is the Mercator projection used in preference
+to e.g. the [[https://en.wikipedia.org/wiki/Azimuthal_equidistant_projection][polar projection]] or the [[https://en.wikipedia.org/wiki/Equal_Earth_projection][equal earth projection]]? - see here
+for more on [[https://xkcd.com/977/][map projections]].
+
+#+begin_src python :python "sage -python" :results file graphics :file polar_world.png :exports results :eval never-export
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import cartopy
+import cartopy.crs as ccrs
+
+plt.figure(figsize=(8, 8))
+bx = plt.axes(projection=ccrs.NorthPolarStereo())
+bx.set_extent([-180, 180, 50, 90], ccrs.PlateCarree())
+bx.gridlines()
+bx.add_feature(cartopy.feature.LAND)
+bx.add_feature(cartopy.feature.COASTLINE)
+plt.savefig("polar_world.png", bbox_inches="tight")
+#+end_src
+
+#+RESULTS:
+[[file:polar_world.png]]
 
 * Introduction
 
@@ -68,7 +112,7 @@ spherical coordinate chart: \(\theta\) the angle from the North Pole
 and \(\phi\) the longitude, measured from the prime
 meridian. Furthermore it will turn out that this connection no
 curvature (another reason it could not be extended to the whole
-sphere.
+sphere).
 
 Note: the observant reader might be wondering how we can define
 directions without first defining a connection. We do that using the
